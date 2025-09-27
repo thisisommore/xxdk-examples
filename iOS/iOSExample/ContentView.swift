@@ -10,9 +10,10 @@ import SwiftData
 
 struct ContentView: View {
     @State private var SendMessageTextInput: String = ""
-    @EnvironmentObject var xxdk: XXDK
+    @EnvironmentObject var xxdkServ: XXDKService
     @EnvironmentObject var logOutput: LogViewer
-    
+    @Environment(\.modelContext) private var modelContext
+    @State var showAlert = false
     var body: some View {
         VStack {
             ViewThatFits {
@@ -27,8 +28,8 @@ struct ContentView: View {
             .border(.primary)
             ViewThatFits {
                 ScrollView {
-                    Text("Message Received Viewer")
-                    ForEach(xxdk.dmReceiver.msgBuf) { msg in
+                    Text("Messages for " + (xxdkServ.xxdk.codename ?? "Unknown"))
+                    ForEach(xxdkServ.xxdk.dmReceiver.msgBuf) { msg in
                         Text(msg.Msg)
                     }
                 }.defaultScrollAnchor(.bottom)
@@ -40,30 +41,35 @@ struct ContentView: View {
                 TextField ("Enter Message to Send",
                            text: $SendMessageTextInput)
                 .onKeyPress(.return, action: {
-                    xxdk.sendDM(msg: SendMessageTextInput)
-                    _SendMessageTextInput.wrappedValue = ""
-                    return KeyPress.Result.handled
+                        guard xxdkServ.xxdk.cmix?.readyToSend() == true else {
+                            return KeyPress.Result.handled
+                        }
+                        if let key = xxdkServ.xxdk.DM?.getPublicKey() { xxdkServ.xxdk.sendDM(msg: SendMessageTextInput, toPubKey: key, partnerToken: Int32(xxdkServ.xxdk.DM?.getToken() ?? 0)) }
+                        SendMessageTextInput = ""
+                        return KeyPress.Result.handled
                 })
                 .textFieldStyle(.roundedBorder)
                 Button(action: {
-                    xxdk.sendDM(msg: SendMessageTextInput)
-                    _SendMessageTextInput.wrappedValue = ""
+                    guard xxdkServ.xxdk.cmix?.readyToSend() == true else { return }
+                    if let key = xxdkServ.xxdk.DM?.getPublicKey() { xxdkServ.xxdk.sendDM(msg: SendMessageTextInput, toPubKey: key, partnerToken: Int32(xxdkServ.xxdk.DM?.getToken() ?? 0)) }
+                    SendMessageTextInput = ""
                 }, label: {
                         Text("Send")
-                })
+                }).alert(isPresented: $showAlert, content: {Alert(title: Text("The network is getting ready, please try again shortly."))})
                 .buttonStyle(.borderedProminent)
             }.padding()
         }.padding()
         .onAppear(perform: {
+            // Inject SwiftData model context so DMReceiver can persist across all chats
+            xxdkServ.xxdk.setModelContext(modelContext)
             Task {
-                await xxdk.load()
+                await xxdkServ.xxdk.load()
             }
         })
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView().environmentObject(XXDKService(XXDKMock())).environmentObject(LogViewer())
         .modelContainer(for: Item.self, inMemory: true)
 }
-

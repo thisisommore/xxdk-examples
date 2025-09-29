@@ -102,6 +102,27 @@ final class ChannelUICallbacks: NSObject, Bindings.BindingsChannelUICallbacksPro
 
     public var modelContext: ModelContext?
 
+    // MARK: - Persistence Helpers
+    private func persistChannelMessageIfPossible(message: String, channelId: String, channelName: String) {
+        log("persistChannelMessageIfPossible channelId=\(channelId) channelName=\(channelName) message.count=\(message.count)")
+        guard let ctx = modelContext else {
+            log("modelContext not set; skipping persistence for message in channel \(channelName)")
+            return
+        }
+        Task { @MainActor in
+            do {
+                log("fetching/creating chat for channelId=\(channelId)")
+                let chat = try fetchOrCreateChannelChat(channelId: channelId, channelName: channelName, ctx: ctx)
+                let msg = ChatMessage(message: message, isIncoming: true, chat: chat)
+                chat.messages.append(msg)
+                log("saving message to chat=\(chat.name) (messages before save: \(chat.messages.count))")
+                try ctx.save()
+            } catch {
+                log("Failed to save channel message for \(channelName): \(error)")
+            }
+        }
+    }
+
     private func fetchOrCreateChannelChat(channelId: String, channelName: String, ctx: ModelContext) throws -> Chat {
         log("fetchOrCreateChannelChat channelId=\(channelId) channelName=\(channelName)")
         let descriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == channelId })

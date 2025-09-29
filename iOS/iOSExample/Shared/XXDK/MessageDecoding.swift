@@ -62,7 +62,7 @@ func decodeMessage(_ b64: String) -> String? {
     return nil
 }
 
-
+#if DEBUG
 /// Debug helper to print out decoding attempts for an example payload.
 func decodeAny(b64: String = "eJyzKbBLz03PtdEvsAMAFoYDrA==") {
     guard let data = Data(base64Encoded: b64) else {
@@ -86,4 +86,4 @@ func decodeAny(b64: String = "eJyzKbBLz03PtdEvsAMAFoYDrA==") {
         }
     }
 }
-
+#endif

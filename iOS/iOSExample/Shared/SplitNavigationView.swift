@@ -19,7 +19,7 @@ struct SplitNavigationView: View {
 #Preview {
     // In-memory SwiftData container for previewing SplitNavigationView with mock data
     let container = try! ModelContainer(
-        for: Chat.self, ChatMessage.self, MessageReaction.self,
+        for: Chat.self, ChatMessage.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
 
@@ -28,9 +28,9 @@ struct SplitNavigationView: View {
     let chat = Chat(channelId: previewChannelId, name: "General")
     let chat2 = Chat(channelId: "max", name: "Max")
     let msgs = [
-        ChatMessage(message: "Welcome to #general!", isIncoming: true, chat: chat, sender: "System", id: UUID().uuidString),
-        ChatMessage(message: "Hi everyone 👋", isIncoming: false, chat: chat, id: UUID().uuidString),
-        ChatMessage(message: "Great to see you here.", isIncoming: true, chat: chat, sender: "Mayur", id: UUID().uuidString)
+        ChatMessage(message: "Welcome to #general!", isIncoming: true, chat: chat, sender: "System"),
+        ChatMessage(message: "Hi everyone 👋", isIncoming: false, chat: chat),
+        ChatMessage(message: "Great to see you here.", isIncoming: true, chat: chat, sender: "Mayur")
     ]
     msgs.forEach { container.mainContext.insert($0) }
     container.mainContext.insert(chat2)

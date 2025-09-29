@@ -20,7 +20,6 @@ struct iOS_ExampleApp: App {
             Chat.self,
             ChatMessage.self,
             Item.self,
-            MessageReaction.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
 

@@ -18,9 +18,6 @@ class NetTime: NSObject, Bindings.BindingsTimeSourceProtocol {
             Kronos.Clock.sync()
             return Int64(Date.now.timeIntervalSince1970)
         }
-        guard let nowTime = Kronos.Clock.now else {
-            fatalError("Kronos.Clock.now is possibly nil")
-        }
-        return Int64(nowTime.timeIntervalSince1970)
+        return Int64(Kronos.Clock.now!.timeIntervalSince1970)
     }
 }

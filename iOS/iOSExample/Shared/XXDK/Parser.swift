@@ -76,18 +76,6 @@ public struct ChannelJSON: Decodable {
     }
 }
 
-// Channel send report returned by sendText/sendMessage
-// Keys map to: messageID ([]byte -> base64 in JSON), ephId (int64)
-public struct ChannelSendReportJSON: Decodable {
-    public let messageID: Data?
-    public let ephId: Int64?
-
-    private enum CodingKeys: String, CodingKey {
-        case messageID
-        case ephId
-    }
-}
-
 public enum Parser {
     // Shared JSONDecoder for consistency
     private static let decoder: JSONDecoder = {
@@ -108,9 +96,5 @@ public enum Parser {
     
     public static func decodeChannel(from data: Data) throws -> ChannelJSON {
         try decoder.decode(ChannelJSON.self, from: data)
-    }
-
-    public static func decodeChannelSendReport(from data: Data) throws -> ChannelSendReportJSON {
-        try decoder.decode(ChannelSendReportJSON.self, from: data)
     }
 }

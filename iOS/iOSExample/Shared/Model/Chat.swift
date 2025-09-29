@@ -54,24 +54,29 @@ class Chat {
 }
 
 @Model
-class ChatMessage: Identifiable {
+class ChatMessage {
     var id: String
     var message: String
     var timestamp: Date
     var isIncoming: Bool
     var sender: String?
+    var messageId: String?
+    var reactions = [String]()
     var chat: Chat
-    var replyTo: String?
-    init(message: String, isIncoming: Bool, chat: Chat, sender: String? = nil, id: String, replyTo: String? = nil, timestamp: Int64 = Int64(Date().timeIntervalSince1970 * 1e+6 * 1e+3)) {
+    init(message: String, isIncoming: Bool, chat: Chat, sender: String? = nil, id: String = UUID().uuidString) {
         self.id = id
         self.message = message
-        let timestampMilliseconds = Double(timestamp) * 1e-6  // nano to milli
-        let timestampSeconds = timestampMilliseconds * 1e-3
-        self.timestamp = Date(timeIntervalSince1970: Double(timestamp) * 1e-6 * 1e-3)
+        self.timestamp = Date()
         self.isIncoming = isIncoming
         self.sender = sender
         self.chat = chat
-        self.replyTo = replyTo
+    }
+
+    func addReaction(_ emoji: String) {
+        guard !emoji.isEmpty else { return }
+        if !reactions.contains(emoji) {
+            reactions.append(emoji)
+        }
     }
 }
 

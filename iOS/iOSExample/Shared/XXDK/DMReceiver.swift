@@ -61,10 +61,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     
     func receive(_ messageID: Data?, nickname: String?, text: Data?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, mType: Int64, status: Int64) -> Int64 {
         msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text?.utf8 ?? "empty text")"))
-        guard let messageID else { fatalError("no msg id") }
-        guard let text else { fatalError("no text") }
-        guard let decodedMessage = decodeMessage(text.base64EncodedString())  else { fatalError("decode failed") }
-        persistIncoming(message: decodedMessage, codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+        persistIncoming(message: text?.utf8 ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -81,16 +78,14 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     
     func receiveReply(_ messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
         msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
-        guard let messageID else { fatalError("no msg id") }
-        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
         msgCnt += 1;
         return msgCnt;
     }
     
     func receiveText(_ messageID: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
         msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
-        guard let messageID else { fatalError("no msg id") }
-        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
         msgCnt += 1;
         return msgCnt;
     }
@@ -100,13 +95,13 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     // MARK: - Persistence Helpers
-    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data) {
+    private func persistIncomingIfPossible(message: String, codename: String?) {
         guard let ctx = modelContext else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
         Task { @MainActor in
             do {
                 let chat = try fetchOrCreateDMChat(codename: name, ctx: ctx, pubKey: nil, dmToken: nil)
-                let msg = ChatMessage(message: message, isIncoming: true, chat: chat, id: messageId.base64EncodedString())
+                let msg = ChatMessage(message: message, isIncoming: true, chat: chat)
                 chat.messages.append(msg)
                 try ctx.save()
             } catch {
@@ -115,19 +110,19 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         }
     }
 
-    private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data) {
+    private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32) {
         guard let ctx = modelContext else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
         Task { @MainActor in
             do {
                 if let partnerKey {
                     let chat = try fetchOrCreateDMChat(codename: name, ctx: ctx, pubKey: partnerKey, dmToken: dmToken)
-                    let msg = ChatMessage(message: message, isIncoming: true, chat: chat, id: messageId.base64EncodedString())
+                    let msg = ChatMessage(message: message, isIncoming: true, chat: chat)
                     chat.messages.append(msg)
                     try ctx.save()
                 } else {
                     // Fallback if no partner key available
-                    persistIncomingIfPossible(message: message, codename: name, messageId: messageId)
+                    persistIncomingIfPossible(message: message, codename: name)
                 }
             } catch {
                 print("DMReceiver: Failed to save incoming message for \(name): \(error)")

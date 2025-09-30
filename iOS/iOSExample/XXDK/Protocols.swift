@@ -9,8 +9,8 @@ import Kronos
 import Bindings
 import SwiftData
 
-@MainActor
-protocol XXDKP: ObservableObject, AnyObject {
+
+ protocol XXDKP: ObservableObject, AnyObject {
     var ndf: Data? { get set }
     var DM: Bindings.BindingsDMClient? { get set }
     var dmReceiver: DMReceiver { get set }
@@ -20,6 +20,8 @@ protocol XXDKP: ObservableObject, AnyObject {
     func load() async
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32)
     func sendDM(msg: String, channelId: String)
+    func sendReply(msg: String, channelId: String, replyToMessageIdB64: String)
+    func sendReply(msg: String, toPubKey: Data, partnerToken: Int32, replyToMessageIdB64: String)
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON
 }
 // These are common helpers extending the string class which are essential for working with XXDK

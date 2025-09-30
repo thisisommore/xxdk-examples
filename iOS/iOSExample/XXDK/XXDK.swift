@@ -17,7 +17,7 @@ public var MAINNET_URL =
     "https://elixxir-bins.s3.us-west-1.amazonaws.com/ndf/mainnet.json"
 
 let XX_GENERAL_CHAT =
-  "<Speakeasy-v3:xxGeneralChat|description:Talking about the xx network|level:Public|created:1674152234202224215|secrets:rb+rK0HsOYcPpTF6KkpuDWxh7scZbj74kVMHuwhgUR0=|RMfN+9pD/JCzPTIzPk+pf0ThKPvI425hye4JqUxi3iA=|368|1|/qE8BEgQQkXC6n0yxeXGQjvyklaRH6Z+Wu8qvbFxiuw=>";
+    "<Speakeasy-v3:xxGeneralChat|description:Talking about the xx network|level:Public|created:1674152234202224215|secrets:rb+rK0HsOYcPpTF6KkpuDWxh7scZbj74kVMHuwhgUR0=|RMfN+9pD/JCzPTIzPk+pf0ThKPvI425hye4JqUxi3iA=|368|1|/qE8BEgQQkXC6n0yxeXGQjvyklaRH6Z+Wu8qvbFxiuw=>"
 
 // This resolves to "Resources/mainnet.crt" in the project folder for iOSExample
 public var MAINNET_CERT =
@@ -26,15 +26,15 @@ public var MAINNET_CERT =
 enum MyError: Error {
     case runtimeError(String)
 }
-@MainActor
+
+
 public class XXDK: XXDKP {
     // Channels Manager retained for channel sends
     private var channelsManager: Bindings.BindingsChannelsManager?
-    
     func sendDM(msg: String) {
-        
+
     }
-    
+
     private var networkUrl = MAINNET_URL
     private var networkCert = MAINNET_CERT
     private var stateDir: URL
@@ -52,7 +52,7 @@ public class XXDK: XXDKP {
     // Retained SwiftData model context for lifecycle operations
     private var modelContext: ModelContext?
     // modelContext for dmReceiver is injected from SwiftUI (e.g., ContentView.onAppear)
-    
+
     // Channel UI callbacks for handling channel events
     private let channelUICallbacks: ChannelUICallbacks
 
@@ -77,7 +77,10 @@ public class XXDK: XXDKP {
         // e.g., <system tmp>/<UUID> and use "ekv" within it for state
         do {
             let baseTmp = FileManager.default.temporaryDirectory
-            let uniqueTmp = baseTmp.appendingPathComponent(UUID().uuidString, isDirectory: true)
+            let uniqueTmp = baseTmp.appendingPathComponent(
+                UUID().uuidString,
+                isDirectory: true
+            )
             if !FileManager.default.fileExists(atPath: uniqueTmp.path) {
                 try FileManager.default.createDirectory(
                     at: uniqueTmp,
@@ -86,7 +89,10 @@ public class XXDK: XXDKP {
             }
             stateDir = uniqueTmp.appendingPathComponent("ekv")
         } catch let err {
-            print("ERROR: failed to get state directory: " + err.localizedDescription)
+            print(
+                "ERROR: failed to get state directory: "
+                    + err.localizedDescription
+            )
             fatalError(
                 "failed to get state directory: " + err.localizedDescription
             )
@@ -98,15 +104,17 @@ public class XXDK: XXDKP {
         // Always start from a clean SwiftData state per request
         if let container = modelContext?.container {
             do {
-//                try container.erase()
+                //                try container.erase()
                 print("SwiftData: Deleted all local data at startup")
             } catch {
-                print("SwiftData: Failed to delete all data at startup: \(error)")
+                print(
+                    "SwiftData: Failed to delete all data at startup: \(error)"
+                )
             }
         } else {
             print("SwiftData: No modelContext set; skipping deleteAllData()")
         }
-        
+
         ndf = downloadNDF(url: self.networkUrl, certFilePath: self.networkCert)
 
         // NOTE: Secret should be pulled from keychain
@@ -117,7 +125,10 @@ public class XXDK: XXDKP {
             var err: NSError?
             Bindings.BindingsNewCmix(ndf?.utf8, stateDir.path, secret, "", &err)
             if let err {
-                print("ERROR: could not create new Cmix: " + err.localizedDescription)
+                print(
+                    "ERROR: could not create new Cmix: "
+                        + err.localizedDescription
+                )
                 fatalError(
                     "could not create new Cmix: " + err.localizedDescription
                 )
@@ -139,8 +150,7 @@ public class XXDK: XXDKP {
             print("ERROR: cmix is not available")
             fatalError("cmix is not available")
         }
-        
-   
+
         let receptionID = cmix.getReceptionID()?.base64EncodedString()
         print("cMix Reception ID: \(receptionID ?? "<nil value>")")
 
@@ -160,7 +170,10 @@ public class XXDK: XXDKP {
             }
             dmID = _dmID!
             if let err {
-                print("ERROR: could not generate codename id: " + err.localizedDescription)
+                print(
+                    "ERROR: could not generate codename id: "
+                        + err.localizedDescription
+                )
                 fatalError(
                     "could not generate codename id: "
                         + err.localizedDescription
@@ -183,12 +196,15 @@ public class XXDK: XXDKP {
             &err
         )
         if let err {
-            print("ERROR: could not derive public identity: " + err.localizedDescription)
+            print(
+                "ERROR: could not derive public identity: "
+                    + err.localizedDescription
+            )
             fatalError(
                 "could not derive public identity: " + err.localizedDescription
             )
         }
-        
+
         if let pubId = publicIdentity {
             do {
                 let identity = try Parser.decodeIdentity(from: pubId)
@@ -214,7 +230,10 @@ public class XXDK: XXDKP {
             &err
         )
         if let err {
-            print("ERROR: could not load notifications: " + err.localizedDescription)
+            print(
+                "ERROR: could not load notifications: "
+                    + err.localizedDescription
+            )
             fatalError(
                 "could not load notifications: " + err.localizedDescription
             )
@@ -236,7 +255,9 @@ public class XXDK: XXDKP {
             &err
         )
         if let err {
-            print("ERROR: could not load dm client: " + err.localizedDescription)
+            print(
+                "ERROR: could not load dm client: " + err.localizedDescription
+            )
             fatalError("could not load dm client: " + err.localizedDescription)
         }
 
@@ -264,79 +285,92 @@ public class XXDK: XXDKP {
                 version: 0,
                 localEvents: true
             )
-        } catch  {
-          print("ERROR: failed to set storageTagListener \(error)")
-          fatalError("failed to set storageTagListener \(error)")
+        } catch {
+            print("ERROR: failed to set storageTagListener \(error)")
+            fatalError("failed to set storageTagListener \(error)")
         }
-        
+
         self.storageTagListener = storageTagListener
         // Run readiness + Channels Manager creation in the background, retrying every 2 seconds until success
-  
 
         Task {
             while true {
-                let readyData =   try cmix.isReady(0.1)
-                let readinessInfo =  try Parser.decodeIsReadyInfo(from: readyData)
+                let readyData = try cmix.isReady(0.1)
+                let readinessInfo = try Parser.decodeIsReadyInfo(
+                    from: readyData
+                )
                 if !readinessInfo.isReady {
-                    print("cMix not ready yet (howClose=\(readinessInfo.howClose)) — retrying in 2s…")
+                    print(
+                        "cMix not ready yet (howClose=\(readinessInfo.howClose)) — retrying in 2s…"
+                    )
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
                     continue
                 }
-                let cmixId =  cmix.getID()
+                let cmixId = cmix.getID()
                 // Attempt to create Channels Manager on the MainActor
                 var err: NSError?
 
-                guard let noti = Bindings.BindingsLoadNotificationsDummy(cmixId, &err) else { 
+                guard
+                    let noti = Bindings.BindingsLoadNotificationsDummy(
+                        cmixId,
+                        &err
+                    )
+                else {
                     print("ERROR: BindingsLoadNotificationsDummy returned nil")
                     fatalError("BindingsLoadNotificationsDummy returned nil")
                 }
-                
-      
-//                let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
 
-       
-                eventModelBuilder = EventModelBuilder(model: EventModel(storageTag: String(describing: storageTagListener.data)))
-     
-                    if let ctx = self.modelContext {
-                        self.eventModelBuilder?.configure(modelContext: ctx)
-                    }
-      
-                guard let cm = Bindings.BindingsNewChannelsManager(
-                    cmix.getID(),
-                    dmID,
-                    eventModelBuilder,
-                    nil,
-                    noti.getID(),
-                    channelUICallbacks,
-                    &err
-                ) else {
+                //                let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
+
+                eventModelBuilder = EventModelBuilder(
+                    model: EventModel(
+                        storageTag: String(describing: storageTagListener.data)
+                    )
+                )
+
+                if let ctx = self.modelContext {
+                    self.eventModelBuilder?.configure(modelContext: ctx)
+                }
+
+                guard
+                    let cm = Bindings.BindingsNewChannelsManager(
+                        cmix.getID(),
+                        dmID,
+                        eventModelBuilder,
+                        nil,
+                        noti.getID(),
+                        channelUICallbacks,
+                        &err
+                    )
+                else {
                     print("ERROR: no cm")
                     fatalError("no cm")
                 }
-                
-                
+
                 // Retain Channels Manager for future channel sends
                 self.channelsManager = cm
-                
+
                 storageTagListener.data = Data(cm.getStorageTag().utf8)
 
                 if let e = err {
                     print("ERROR: \(err)")
                 } else {
-//                     Successfully created Channels Manager; join channel in background and exit loop
+                    //                     Successfully created Channels Manager; join channel in background and exit loop
                     Task {
                         do {
                             _ = try await self.joinChannel(XX_GENERAL_CHAT)
                         } catch {
-                            print("Failed to join channel in background: \(error)")
+                            print(
+                                "Failed to join channel in background: \(error)"
+                            )
                         }
                     }
                     break
                 }
-               
+                
+            }
         }
-        }
-        
+
         guard let codename, let DM, let modelContext else {
             print("ERROR: codename/DM/modelContext not there")
             fatalError("codename/DM/modelContext not there")
@@ -353,19 +387,28 @@ public class XXDK: XXDKP {
             do {
                 try await MainActor.run {
                     // Check if a DM chat already exists for this public key (id == pubkey b64)
-                    let descriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == selfPubKeyB64 })
+                    let descriptor = FetchDescriptor<Chat>(
+                        predicate: #Predicate { $0.id == selfPubKeyB64 }
+                    )
                     let existing = try modelContext.fetch(descriptor)
                     if existing.isEmpty {
                         let token64 = DM.getToken()
                         let tokenU32 = UInt32(truncatingIfNeeded: token64)
                         let selfToken = Int32(bitPattern: tokenU32)
-                        let chat = Chat(pubKey: selfPubKeyData, name: name, dmToken: selfToken)
+                        let chat = Chat(
+                            pubKey: selfPubKeyData,
+                            name: name,
+                            dmToken: selfToken
+                        )
                         modelContext.insert(chat)
                         try modelContext.save()
+                        print("[XXDK] is ready = true")
                     }
                 }
             } catch {
-                print("HomeView: Failed to create self chat for \(codename): \(error)")
+                print(
+                    "HomeView: Failed to create self chat for \(codename): \(error)"
+                )
             }
         }
         // Ensure initial channel exists locally and join only if not present
@@ -373,7 +416,9 @@ public class XXDK: XXDKP {
             let cd = try await joinChannel(XX_GENERAL_CHAT)
             let channelId = cd.channelId ?? "xxGeneralChat"
             try await MainActor.run {
-                let check = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == channelId })
+                let check = FetchDescriptor<Chat>(
+                    predicate: #Predicate { $0.id == channelId }
+                )
                 let existingChannel = try modelContext.fetch(check)
                 if existingChannel.isEmpty {
                     let channelChat = Chat(channelId: channelId, name: cd.name)
@@ -382,25 +427,39 @@ public class XXDK: XXDKP {
                 }
             }
         } catch {
-            print("HomeView: Failed to ensure initial channel xxGeneralChat: \(error)")
+            print(
+                "HomeView: Failed to ensure initial channel xxGeneralChat: \(error)"
+            )
         }
     }
 
     // Persist an outgoing message to SwiftData using the given message ID
-    private func persistOutgoingMessage(chatId: String, defaultName: String, message: String, messageIdB64: String, dmToken: Int32? = nil) {
+    private func persistOutgoingMessage(
+        chatId: String,
+        defaultName: String,
+        message: String,
+        messageIdB64: String,
+        dmToken: Int32? = nil,
+        replyTo: String? = nil
+    ) {
         guard let ctx = self.modelContext else {
             fatalError("persistOutgoingMessage: modelContext not set")
         }
         do {
-            let descriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == chatId })
+            let descriptor = FetchDescriptor<Chat>(
+                predicate: #Predicate { $0.id == chatId }
+            )
             guard let chat = try ctx.fetch(descriptor).first else {
-                fatalError("persistOutgoingMessage: Chat not found for id=\(chatId)")
+                fatalError(
+                    "persistOutgoingMessage: Chat not found for id=\(chatId)"
+                )
             }
             let outMsg = ChatMessage(
                 message: message,
                 isIncoming: false,
                 chat: chat,
-                id: messageIdB64
+                id: messageIdB64,
+                replyTo: replyTo
             )
             chat.messages.append(outMsg)
             try ctx.save()
@@ -410,14 +469,22 @@ public class XXDK: XXDKP {
     }
 
     // Persist a reaction to SwiftData
-    private func persistReaction(messageIdB64: String, emoji: String, isMe: Bool = true) {
+    private func persistReaction(
+        messageIdB64: String,
+        emoji: String,
+        isMe: Bool = true
+    ) {
         guard let ctx = self.modelContext else {
             print("persistReaction: modelContext not set")
             return
         }
         Task { @MainActor in
             do {
-                let reaction = MessageReaction(messageId: messageIdB64, emoji: emoji, isMe: isMe)
+                let reaction = MessageReaction(
+                    messageId: messageIdB64,
+                    emoji: emoji,
+                    isMe: isMe
+                )
                 ctx.insert(reaction)
                 try ctx.save()
             } catch {
@@ -432,7 +499,9 @@ public class XXDK: XXDKP {
             fatalError("sendDM(channel): Channels Manager not initialized")
         }
         // Channel IDs are base64 in our storage; attempt base64 decode first, fallback to UTF-8 bytes
-        let channelIdData = Data(base64Encoded: channelId) ?? channelId.data(using: .utf8) ?? Data()
+        let channelIdData =
+            Data(base64Encoded: channelId) ?? channelId.data(using: .utf8)
+            ?? Data()
         do {
             let reportData = try cm.sendMessage(
                 channelIdData,
@@ -442,14 +511,22 @@ public class XXDK: XXDKP {
                 pingsJSON: nil
             )
             do {
-                let report = try Parser.decodeChannelSendReport(from: reportData)
+                let report = try Parser.decodeChannelSendReport(
+                    from: reportData
+                )
                 if let mid = report.messageID {
-                    print("Channel sendMessage messageID: \(mid.base64EncodedString())")
+                    print(
+                        "Channel sendMessage messageID: \(mid.base64EncodedString())"
+                    )
                     let chatId = channelId
                     let defaultName: String = {
                         if let ctx = self.modelContext {
-                            let descriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == chatId })
-                            if let found = try? ctx.fetch(descriptor).first { return found.name }
+                            let descriptor = FetchDescriptor<Chat>(
+                                predicate: #Predicate { $0.id == chatId }
+                            )
+                            if let found = try? ctx.fetch(descriptor).first {
+                                return found.name
+                            }
                         }
                         return "Channel \(String(chatId.prefix(8)))"
                     }()
@@ -471,13 +548,81 @@ public class XXDK: XXDKP {
         }
     }
 
-    // Send a reaction to a specific message in a channel
-    public func sendReaction(emoji: String, toMessageIdB64: String, inChannelId channelId: String) {
+    // Send a reply to a specific message in a channel
+    func sendReply(msg: String, channelId: String, replyToMessageIdB64: String) {
         guard let cm = channelsManager else {
-            fatalError("sendReaction(channel): Channels Manager not initialized")
+            fatalError("sendReply(channel): Channels Manager not initialized")
+        }
+        let channelIdData =
+            Data(base64Encoded: channelId) ?? channelId.data(using: .utf8)
+            ?? Data()
+        guard let replyToMessageId = Data(base64Encoded: replyToMessageIdB64) else {
+            print("sendReply(channel): invalid reply message id base64")
+            return
+        }
+        do {
+            let reportData = try cm.sendReply(
+                channelIdData,
+                message: encodeMessage(msg),
+                messageToReactTo: replyToMessageId,
+                validUntilMS: 0,
+                cmixParamsJSON: "".data,
+                pingsJSON: nil
+            )
+            do {
+                let report = try Parser.decodeChannelSendReport(
+                    from: reportData
+                )
+                if let mid = report.messageID {
+                    print(
+                        "Channel sendReply messageID: \(mid.base64EncodedString())"
+                    )
+                    let chatId = channelId
+                    let defaultName: String = {
+                        if let ctx = self.modelContext {
+                            let descriptor = FetchDescriptor<Chat>(
+                                predicate: #Predicate { $0.id == chatId }
+                            )
+                            if let found = try? ctx.fetch(descriptor).first {
+                                return found.name
+                            }
+                        }
+                        return "Channel \(String(chatId.prefix(8)))"
+                    }()
+                    self.persistOutgoingMessage(
+                        chatId: chatId,
+                        defaultName: defaultName,
+                        message: msg,
+                        messageIdB64: mid.base64EncodedString(),
+                        dmToken: nil,
+                        replyTo: replyToMessageIdB64
+                    )
+                } else {
+                    print("Channel sendReply returned no messageID")
+                }
+            } catch {
+                print("Failed to decode ChannelSendReport (reply): \(error)")
+            }
+        } catch {
+            print("sendReply(channel) failed: \(error.localizedDescription)")
+        }
+    }
+
+    // Send a reaction to a specific message in a channel
+    public func sendReaction(
+        emoji: String,
+        toMessageIdB64: String,
+        inChannelId channelId: String
+    ) {
+        guard let cm = channelsManager else {
+            fatalError(
+                "sendReaction(channel): Channels Manager not initialized"
+            )
         }
         // Channel IDs are base64 in our storage; attempt base64 decode first, fallback to UTF-8 bytes
-        let channelIdData = Data(base64Encoded: channelId) ?? channelId.data(using: .utf8) ?? Data()
+        let channelIdData =
+            Data(base64Encoded: channelId) ?? channelId.data(using: .utf8)
+            ?? Data()
         guard let targetMessageId = Data(base64Encoded: toMessageIdB64) else {
             print("sendReaction(channel): invalid target message id base64")
             return
@@ -493,9 +638,13 @@ public class XXDK: XXDKP {
             )
             // Decode send report with the shared Parser
             do {
-                let report = try Parser.decodeChannelSendReport(from: reportData)
+                let report = try Parser.decodeChannelSendReport(
+                    from: reportData
+                )
                 if let mid = report.messageID {
-                    print("Channel sendReaction messageID: \(mid.base64EncodedString())")
+                    print(
+                        "Channel sendReaction messageID: \(mid.base64EncodedString())"
+                    )
                 } else {
                     print("Channel sendReaction returned no messageID")
                 }
@@ -506,7 +655,11 @@ public class XXDK: XXDKP {
             print("sendReaction(channel) failed: \(error.localizedDescription)")
         }
         // Persist locally as 'me'
-        self.persistReaction(messageIdB64: toMessageIdB64, emoji: emoji, isMe: true)
+        self.persistReaction(
+            messageIdB64: toMessageIdB64,
+            emoji: emoji,
+            isMe: true
+        )
     }
 
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32) {
@@ -522,16 +675,22 @@ public class XXDK: XXDKP {
                 leaseTimeMS: 0,
                 cmixParamsJSON: "".data
             )
-            
+
             do {
-                let report = try Parser.decodeChannelSendReport(from: reportData)
+                let report = try Parser.decodeChannelSendReport(
+                    from: reportData
+                )
                 if let mid = report.messageID {
                     print("DM sendText messageID: \(mid.base64EncodedString())")
                     let chatId = toPubKey.base64EncodedString()
                     let defaultName: String = {
                         if let ctx = self.modelContext {
-                            let descriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == chatId })
-                            if let found = try? ctx.fetch(descriptor).first { return found.name }
+                            let descriptor = FetchDescriptor<Chat>(
+                                predicate: #Predicate { $0.id == chatId }
+                            )
+                            if let found = try? ctx.fetch(descriptor).first {
+                                return found.name
+                            }
                         }
                         return "Direct Message"
                     }()
@@ -554,8 +713,70 @@ public class XXDK: XXDKP {
         }
     }
 
+    // Send a reply to a specific message in a DM conversation
+    func sendReply(msg: String, toPubKey: Data, partnerToken: Int32, replyToMessageIdB64: String) {
+        guard let DM else {
+            print("ERROR: DM not there")
+            fatalError("DM not there")
+        }
+        guard let replyToMessageId = Data(base64Encoded: replyToMessageIdB64) else {
+            print("sendReply(DM): invalid reply message id base64")
+            return
+        }
+        do {
+            let reportData = try DM.sendReply(
+                toPubKey,
+                partnerToken: partnerToken,
+                replyMessage: encodeMessage(msg),
+                replyToBytes: replyToMessageId,
+                leaseTimeMS: 0,
+                cmixParamsJSON: "".data
+            )
+            do {
+                let report = try Parser.decodeChannelSendReport(
+                    from: reportData
+                )
+                if let mid = report.messageID {
+                    print("DM sendReply messageID: \(mid.base64EncodedString())")
+                    let chatId = toPubKey.base64EncodedString()
+                    let defaultName: String = {
+                        if let ctx = self.modelContext {
+                            let descriptor = FetchDescriptor<Chat>(
+                                predicate: #Predicate { $0.id == chatId }
+                            )
+                            if let found = try? ctx.fetch(descriptor).first {
+                                return found.name
+                            }
+                        }
+                        return "Direct Message"
+                    }()
+                    self.persistOutgoingMessage(
+                        chatId: chatId,
+                        defaultName: defaultName,
+                        message: msg,
+                        messageIdB64: mid.base64EncodedString(),
+                        dmToken: partnerToken,
+                        replyTo: replyToMessageIdB64
+                    )
+                } else {
+                    print("DM sendReply returned no messageID")
+                }
+            } catch {
+                print("Failed to decode ChannelSendReport (DM reply): \(error)")
+            }
+        } catch let error {
+            print("ERROR: Unable to send reply: " + error.localizedDescription)
+            fatalError("Unable to send reply: " + error.localizedDescription)
+        }
+    }
+
     // Send a reaction to a specific message in a DM conversation
-    public func sendReaction(emoji: String, toMessageIdB64: String, toPubKey: Data, partnerToken: Int32) {
+    public func sendReaction(
+        emoji: String,
+        toMessageIdB64: String,
+        toPubKey: Data,
+        partnerToken: Int32
+    ) {
         guard let DM else {
             print("ERROR: DM not there")
             fatalError("DM not there")
@@ -574,21 +795,33 @@ public class XXDK: XXDKP {
             )
             // Decode send report with the shared Parser (same as text send)
             do {
-                let report = try Parser.decodeChannelSendReport(from: reportData)
+                let report = try Parser.decodeChannelSendReport(
+                    from: reportData
+                )
                 if let mid = report.messageID {
-                    print("DM sendReaction messageID: \(mid.base64EncodedString())")
+                    print(
+                        "DM sendReaction messageID: \(mid.base64EncodedString())"
+                    )
                 } else {
                     print("DM sendReaction returned no messageID")
                 }
             } catch {
-                print("Failed to decode ChannelSendReport (DM reaction): \(error)")
+                print(
+                    "Failed to decode ChannelSendReport (DM reaction): \(error)"
+                )
             }
         } catch let error {
-            print("ERROR: Unable to send reaction: " + error.localizedDescription)
+            print(
+                "ERROR: Unable to send reaction: " + error.localizedDescription
+            )
             fatalError("Unable to send reaction: " + error.localizedDescription)
         }
         // Persist locally as 'me'
-        self.persistReaction(messageIdB64: toMessageIdB64, emoji: emoji, isMe: true)
+        self.persistReaction(
+            messageIdB64: toMessageIdB64,
+            emoji: emoji,
+            isMe: true
+        )
     }
 
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON {
@@ -608,16 +841,22 @@ public class XXDK: XXDKP {
             data: storageTagData,
             encoding: .utf8
         )
-        
-        // Use the same Channels DB path as created during initialization
-        let channelsDir = stateDir.deletingLastPathComponent().appendingPathComponent("channels", isDirectory: true)
-//        let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
 
-        guard let noti = Bindings.BindingsLoadNotificationsDummy(cmixId, &err) else {
+        // Use the same Channels DB path as created during initialization
+        let channelsDir = stateDir.deletingLastPathComponent()
+            .appendingPathComponent("channels", isDirectory: true)
+        //        let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
+
+        guard let noti = Bindings.BindingsLoadNotificationsDummy(cmixId, &err)
+        else {
             print("ERROR: notifications dummy was nil")
             fatalError("notifications dummy was nil")
         }
-        if let e = err { throw MyError.runtimeError("could not load notifications dummy: \(e.localizedDescription)") }
+        if let e = err {
+            throw MyError.runtimeError(
+                "could not load notifications dummy: \(e.localizedDescription)"
+            )
+        }
 
         let cm = Bindings.BindingsLoadChannelsManager(
             cmixId,
@@ -628,13 +867,18 @@ public class XXDK: XXDKP {
             /* uiCallbacks: */ channelUICallbacks,
             &err
         )
-        if let e = err { throw MyError.runtimeError("could not load channels manager: \(e.localizedDescription)") }
-        guard let cm else {throw MyError.runtimeError("channels manager was nil")}
-        
-        
+        if let e = err {
+            throw MyError.runtimeError(
+                "could not load channels manager: \(e.localizedDescription)"
+            )
+        }
+        guard let cm else {
+            throw MyError.runtimeError("channels manager was nil")
+        }
+
         // Retain Channels Manager for channel operations
         self.channelsManager = cm
-     
+
         // Join the channel and parse the returned JSON
         let raw = try cm.joinChannel(prettyPrint)
         let channel = try Parser.decodeChannel(from: raw)
@@ -678,7 +922,10 @@ public class XXDK: XXDKP {
         do {
             certString = try String(contentsOfFile: certFilePath)
         } catch let error {
-            print("ERROR: Missing network certificate, please include a mainnet, testnet,or localnet certificate in the Resources folder: " + error.localizedDescription)
+            print(
+                "ERROR: Missing network certificate, please include a mainnet, testnet,or localnet certificate in the Resources folder: "
+                    + error.localizedDescription
+            )
             fatalError(
                 "Missing network certificate, please include a mainnet, testnet,"
                     + "or localnet certificate in the Resources folder: "
@@ -693,7 +940,10 @@ public class XXDK: XXDKP {
             &err
         )
         if let err {
-            print("ERROR: DownloadAndverifySignedNdfWithUrl(\(url), \(certString)) error: " + err.localizedDescription)
+            print(
+                "ERROR: DownloadAndverifySignedNdfWithUrl(\(url), \(certString)) error: "
+                    + err.localizedDescription
+            )
             fatalError(
                 "DownloadAndverifySignedNdfWithUrl(\(url), \(certString)) error: "
                     + err.localizedDescription

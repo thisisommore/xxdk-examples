@@ -73,12 +73,16 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
 
     // Persist a message into SwiftData if modelContext is set
     private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, sender: String?, messageIdB64: String? = nil, replyTo: String? = nil, timestamp: Int64) {
-        guard let ctx = modelContext else {
+        guard let mainContext = modelContext else {
             return
         }
+        
+        // Create a background context for this operation
+        let backgroundContext = ModelContext(mainContext.container)
+        
         Task { @MainActor in
             do {
-                let chat = try fetchOrCreateChannelChat(channelId: channelId, channelName: channelName, ctx: ctx)
+                let chat = try fetchOrCreateChannelChat(channelId: channelId, channelName: channelName, ctx: backgroundContext)
                 let msg: ChatMessage
                 if let mid = messageIdB64, !mid.isEmpty {
                     log("ChatMessage(message: \(text), isIncoming: \(true), chat: \(chat), sender: \(sender), id: \(mid))")
@@ -87,8 +91,9 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                     fatalError("no message id")
                 }
                 chat.messages.append(msg)
-                try ctx.save()
+                try backgroundContext.save()
             } catch {
+                print("EventModel: Failed to save message: \(error)")
             }
         }
     }
@@ -154,6 +159,31 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             }
         }
         return 0
+    }
+
+    func deleteReaction(messageId: String, emoji: String) {
+        guard let ctx = modelContext else {
+            log("deleteReaction: no modelContext available")
+            return
+        }
+        
+        Task { @MainActor in
+            do {
+                let descriptor = FetchDescriptor<MessageReaction>(
+                    predicate: #Predicate { $0.messageId == messageId && $0.emoji == emoji }
+                )
+                let reactions = try ctx.fetch(descriptor)
+                
+                for reaction in reactions {
+                    ctx.delete(reaction)
+                    log("Deleted reaction: \(emoji) from message \(messageId)")
+                }
+                
+                try ctx.save()
+            } catch {
+                print("EventModel: Failed to delete reaction: \(error)")
+            }
+        }
     }
 
     func receiveReply(_ channelID: Data?, messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, pubKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, lease: Int64, roundID: Int64, messageType: Int64, status: Int64, hidden: Bool) -> Int64 {

@@ -7,12 +7,12 @@ struct SplitNavigationView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             // Sidebar / Primary
-            HomeView(width: 100)
+            HomeView<XXDK>(width: 100)
                 .navigationTitle("Home")
         } detail: {
             // Detail
             Text("Select chat to continue")
-        }
+        }.navigationBarBackButtonHidden(true)
     }
 }
 
@@ -37,5 +37,5 @@ struct SplitNavigationView: View {
 
     return SplitNavigationView()
         .modelContainer(container)
-        .environmentObject(XXDKService(XXDKMock()))
+        .environmentObject(XXDKMock())
 }

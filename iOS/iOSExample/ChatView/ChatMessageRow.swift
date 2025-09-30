@@ -8,14 +8,15 @@ import SwiftData
 import SwiftUI
 struct ChatMessageRow: View {
     let result: ChatMessage
+    var onReply: ((ChatMessage) -> Void)?
     
     @Query private var chatReactions: [MessageReaction]
     @Query private var repliedTo: [ChatMessage]
-    init(result: ChatMessage) {
+    init(result: ChatMessage, onReply: ((ChatMessage) -> Void)? = nil) {
         self.result = result
+        self.onReply = onReply
         let messageId = result.id
         let replyTo = result.replyTo
-        print("mid \(messageId)")
         _chatReactions = Query(filter: #Predicate<MessageReaction> { r in
             r.messageId == messageId
         })
@@ -34,7 +35,10 @@ struct ChatMessageRow: View {
                     text: result.message,
                     isIncoming: result.isIncoming,
                     repliedTo: repliedTo.first?.message,
-                    sender: result.sender
+                    sender: result.sender,
+                    onReply: {
+                        onReply?(result)
+                    }
                 )
                 Reactions(reactions: chatReactions)
             }

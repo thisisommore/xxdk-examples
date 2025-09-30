@@ -27,6 +27,7 @@ struct MessageItem: View {
     let myReactions: Set<String>
     let timeStamp: Date = Date()
     var calendar = Calendar.current
+    var onReply: (() -> Void)?
     enum Emoji: String, CaseIterable, Identifiable {
         case laugh, laughLound, redHeart, Cry, Like, custom, None
         var id: Self { self }
@@ -37,14 +38,16 @@ struct MessageItem: View {
     var time: String = ""
     @State private var isEmojiSheetPresented: Bool = false
     @State private var reaction: String? = nil
+    @State private var shouldTriggerReply: Bool = false
 
-    init(text: String, isIncoming: Bool, repliedTo: String?, sender: String?, reactionsSet: Set<String> = [], myReactions: Set<String> = []) {
+    init(text: String, isIncoming: Bool, repliedTo: String?, sender: String?, reactionsSet: Set<String> = [], myReactions: Set<String> = [], onReply: (() -> Void)? = nil) {
         self.text = text
         self.isIncoming = isIncoming
         self.repliedTo = repliedTo
         self.sender = sender
         self.reactionsSet = reactionsSet
         self.myReactions = myReactions
+        self.onReply = onReply
         let hour = calendar.component(.hour, from: timeStamp)
         let minute = calendar.component(.minute, from: timeStamp)
         let second = calendar.component(.second, from: timeStamp)
@@ -72,7 +75,7 @@ struct MessageItem: View {
                         CSpacer(!isIncoming)
 
                         // reply preview
-                        Text(stripParagraphTags(repliedTo))
+                        HTMLText(repliedTo, textColor: .black)
                             .padding(.leading, 12)
                             .padding(.top, 12)
                             .foregroundStyle(.black).opacity(0.4).font(
@@ -118,7 +121,7 @@ struct MessageItem: View {
                     CSpacer(!isIncoming)
 
                     // Message
-                    Text(stripParagraphTags(text))
+                    HTMLText(text)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 5)
                         .background(isIncoming ? Color.blue : Color.gray)
@@ -141,6 +144,12 @@ struct MessageItem: View {
                                     .tag(Emoji.custom)
                             }
                             .pickerStyle(.palette)
+
+                            Button {
+                                shouldTriggerReply = true
+                            } label: {
+                                Label("Reply", systemImage: "arrowshape.turn.up.left")
+                            }
 
                             Button {
                                 UIPasteboard.general.setValue(
@@ -185,6 +194,12 @@ struct MessageItem: View {
                 isEmojiSheetPresented = false
             }
         }
+        .onChange(of: shouldTriggerReply) { _, newValue in
+            if newValue {
+                onReply?()
+                shouldTriggerReply = false
+            }
+        }
     }
 }
 
@@ -192,7 +207,7 @@ struct MessageItem: View {
     ScrollView {
         VStack(spacing: 0) {  // Add this VStack with spacing: 0
             MessageItem(
-                text: "Yup here you go",
+                text: "<p>Yup here you go</p>",
                 isIncoming: true,
                 repliedTo:
                     "Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go",
@@ -201,7 +216,11 @@ struct MessageItem: View {
                 myReactions: ["😂", "🔥"]
             )
             MessageItem(
-                text: "Yup here you go",
+                text: """
+                <a href="https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free" rel="noopener noreferrer" target="_blank">
+                https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free
+                </a>
+                """,
                 isIncoming: true,
                 repliedTo: "Wow lets go",
                 sender: "Mayur",

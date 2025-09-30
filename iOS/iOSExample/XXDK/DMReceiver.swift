@@ -39,28 +39,40 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     private var msgCnt: Int64 = 0
     
     func eventUpdate(_ eventType: Int64, jsonData: Data?) {
-        msgBuf.append(ReceivedMessage(Msg: "Received Event id \(eventType)"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "Received Event id \(eventType)"))
+        }
     }
         
     func deleteMessage(_ messageID: Data?, senderPubKey: Data?) -> Bool {
-        msgBuf.append(ReceivedMessage(Msg: "Delete message: " +
-                      "\(messageID?.base64EncodedString() ?? "empty id"), " +
-                      "\(senderPubKey?.base64EncodedString() ?? "empty pubkey")"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "Delete message: " +
+                          "\(messageID?.base64EncodedString() ?? "empty id"), " +
+                          "\(senderPubKey?.base64EncodedString() ?? "empty pubkey")"))
+        }
         return true
     }
     
     func getConversation(_ senderPubKey: Data?) -> Data? {
-        msgBuf.append(ReceivedMessage(Msg: "getConversation: \(senderPubKey?.base64EncodedString() ?? "empty pubkey")"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "getConversation: \(senderPubKey?.base64EncodedString() ?? "empty pubkey")"))
+        }
         return "".data
     }
     
     func getConversations() -> Data? {
-        msgBuf.append(ReceivedMessage(Msg: "getConversations"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "getConversations"))
+        }
         return "[]".data
     }
     
     func receive(_ messageID: Data?, nickname: String?, text: Data?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, mType: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text?.utf8 ?? "empty text")"))
+        // Ensure UI updates happen on main thread
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text?.utf8 ?? "empty text")"))
+        }
+        
         guard let messageID else { fatalError("no msg id") }
         guard let text else { fatalError("no text") }
         guard let decodedMessage = decodeMessage(text.base64EncodedString())  else { fatalError("decode failed") }
@@ -72,7 +84,9 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveReaction(_ messageID: Data?, reactionTo: Data?, nickname: String?, reaction: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg:  "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(reaction ?? "empty text")"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg:  "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(reaction ?? "empty text")"))
+        }
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -80,7 +94,9 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveReply(_ messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
+        }
         guard let messageID else { fatalError("no msg id") }
         persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         msgCnt += 1;
@@ -88,7 +104,9 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveText(_ messageID: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
+        }
         guard let messageID else { fatalError("no msg id") }
         persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         msgCnt += 1;
@@ -96,19 +114,23 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func updateSentStatus(_ uuid: Int64, messageID: Data?, timestamp: Int64, roundID: Int64, status: Int64) {
-        msgBuf.append(ReceivedMessage(Msg: "Message sent status update: \(uuid) -> \(status), \(roundID)"))
+        Task { @MainActor in
+            msgBuf.append(ReceivedMessage(Msg: "Message sent status update: \(uuid) -> \(status), \(roundID)"))
+        }
     }
     
     // MARK: - Persistence Helpers
-    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data) {
-        guard let ctx = modelContext else { return }
+    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data, ctx: ModelContext? = nil) {
+        let contextToUse = ctx ?? modelContext
+        guard let contextToUse else { return }
+        
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
         Task { @MainActor in
             do {
-                let chat = try fetchOrCreateDMChat(codename: name, ctx: ctx, pubKey: nil, dmToken: nil)
+                let chat = try fetchOrCreateDMChat(codename: name, ctx: contextToUse, pubKey: nil, dmToken: nil)
                 let msg = ChatMessage(message: message, isIncoming: true, chat: chat, id: messageId.base64EncodedString())
                 chat.messages.append(msg)
-                try ctx.save()
+                try contextToUse.save()
             } catch {
                 print("DMReceiver: Failed to save incoming message for \(name): \(error)")
             }
@@ -118,16 +140,20 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data) {
         guard let ctx = modelContext else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
+        
+        // Create a new background context for this operation
+        let backgroundContext = ModelContext(ctx.container)
+        
         Task { @MainActor in
             do {
                 if let partnerKey {
-                    let chat = try fetchOrCreateDMChat(codename: name, ctx: ctx, pubKey: partnerKey, dmToken: dmToken)
+                    let chat = try fetchOrCreateDMChat(codename: name, ctx: backgroundContext, pubKey: partnerKey, dmToken: dmToken)
                     let msg = ChatMessage(message: message, isIncoming: true, chat: chat, id: messageId.base64EncodedString())
                     chat.messages.append(msg)
-                    try ctx.save()
+                    try backgroundContext.save()
                 } else {
                     // Fallback if no partner key available
-                    persistIncomingIfPossible(message: message, codename: name, messageId: messageId)
+                    persistIncomingIfPossible(message: message, codename: name, messageId: messageId, ctx: backgroundContext)
                 }
             } catch {
                 print("DMReceiver: Failed to save incoming message for \(name): \(error)")

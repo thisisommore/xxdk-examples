@@ -1,10 +1,10 @@
 import SwiftUI
 import SwiftData
 
-struct HomeView: View {
+struct HomeView<T:XXDKP>: View {
     @State private var showingSheet = false
     @Query private var chats: [Chat]
-    @EnvironmentObject var xxdkServ: XXDKService
+    @EnvironmentObject var xxdk: T
     @State private var didStartLoad = false
     @Environment(\.modelContext) private var modelContext
     
@@ -13,7 +13,7 @@ struct HomeView: View {
     var body: some View {
         List {
             ForEach(chats) { chat in
-                NavigationLink(destination: ChatView(width: UIScreen.w(40), chatId: chat.id, chatTitle: chat.name)) {
+                NavigationLink(value: Destination.chat(chatId: chat.id, chatTitle: chat.name)) {
                     VStack(alignment: .leading) {
                         Text(chat.name).foregroundStyle(.black)
                         Text("No messages yet").foregroundStyle(.black)
@@ -33,16 +33,6 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingSheet) {
             NewChatView()
-        }
-        .onAppear {
-            // Ensure we only start loading once from HomeView
-            if !didStartLoad {
-                didStartLoad = true
-                Task {
-                    xxdkServ.xxdk.setModelContext(modelContext)
-                    await xxdkServ.xxdk.load()
-                }
-            }
         }
     }
 }
@@ -85,8 +75,8 @@ struct NewChatView: View {
     ["Tom", "Mayur", "Shashank"].forEach { name in
         container.mainContext.insert(Chat(pubKey: Data(), name: name, dmToken: 0))
     }
-    return HomeView(width: UIScreen.w(100))
+    return HomeView<XXDKMock>(width: UIScreen.w(100))
         .modelContainer(container)
-        .environmentObject(XXDKService(XXDKMock()))
+        .environmentObject(XXDKMock())
 }
 

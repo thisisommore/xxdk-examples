@@ -23,9 +23,9 @@ struct ChatView: View {
         return chat.messages.sorted { $0.timestamp < $1.timestamp }
     }
 
-    @EnvironmentObject var xxdkServ: XXDKService
     @Environment(\.dismiss) private var dismiss
     @State var abc: String = ""
+    @State private var replyingTo: ChatMessage? = nil
 
     init(width: CGFloat, chatId: String, chatTitle: String) {
         self.width = width
@@ -39,13 +39,14 @@ struct ChatView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ZStack {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(messages, id: \.id) { result in
-                                ChatMessageRow(result: result)
+                                ChatMessageRow(result: result, onReply: { message in
+                                    replyingTo = message
+                                })
                                 if result == messages.last {
                                     HStack {}.padding(.vertical, 20)
                                 }
@@ -68,12 +69,17 @@ struct ChatView: View {
                 }
                 VStack {
                     Spacer()
-                    MessageForm(chat: chat)
+                    MessageForm<XXDK>(
+                        chat: chat,
+                        replyTo: replyingTo,
+                        onCancelReply: {
+                            replyingTo = nil
+                        }
+                    )
                 }
                 .navigationTitle(chatTitle)
             }
 
-        }
 
     }
 }
@@ -99,5 +105,5 @@ struct ChatView: View {
         chatTitle: chat.name
     )
     .modelContainer(container)
-    .environmentObject(XXDKService(XXDKMock()))
+    .environmentObject(XXDKMock())
 }

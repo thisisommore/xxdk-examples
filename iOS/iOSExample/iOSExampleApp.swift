@@ -33,9 +33,9 @@ struct iOS_ExampleApp: App {
 
     var body: some Scene {
         WindowGroup {
-            SplitNavigationView()
+            LandingPage<XXDK>()
                 .environmentObject(logOutput)
-                .environmentObject(XXDKService(xxdk))
+                .environmentObject(xxdk)
         }
         .modelContainer(sharedModelContainer)
     }

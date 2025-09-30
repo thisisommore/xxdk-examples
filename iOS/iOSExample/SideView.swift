@@ -22,7 +22,7 @@ struct SideView: View {
     @State var rightW: CGFloat = UIScreen.w(70)
     var body: some View {
         HStack(alignment: .center) {
-            HomeView(width: leftW)
+            HomeView<XXDK>(width: leftW)
             Resizer()
                 .gesture(
                     DragGesture()

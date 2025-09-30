@@ -65,8 +65,6 @@ class ChatMessage: Identifiable {
     init(message: String, isIncoming: Bool, chat: Chat, sender: String? = nil, id: String, replyTo: String? = nil, timestamp: Int64 = Int64(Date().timeIntervalSince1970 * 1e+6 * 1e+3)) {
         self.id = id
         self.message = message
-        let timestampMilliseconds = Double(timestamp) * 1e-6  // nano to milli
-        let timestampSeconds = timestampMilliseconds * 1e-3
         self.timestamp = Date(timeIntervalSince1970: Double(timestamp) * 1e-6 * 1e-3)
         self.isIncoming = isIncoming
         self.sender = sender

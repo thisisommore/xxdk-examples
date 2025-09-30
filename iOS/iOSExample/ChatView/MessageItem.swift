@@ -76,6 +76,7 @@ struct MessageItem: View {
 
                         // reply preview
                         HTMLText(repliedTo, textColor: .black)
+                            .fontSize(12)
                             .padding(.leading, 12)
                             .padding(.top, 12)
                             .foregroundStyle(.black).opacity(0.4).font(

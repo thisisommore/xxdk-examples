@@ -15,7 +15,8 @@ private extension NSAttributedString {
     func withSystemFonts(
         baseTextStyle: UIFont.TextStyle = .body,
         preserveSizes: Bool = true,
-        preserveBoldItalic: Bool = true
+        preserveBoldItalic: Bool = true,
+        customFontSize: CGFloat? = nil
     ) -> NSAttributedString {
         let mutable = NSMutableAttributedString(attributedString: self)
         let full = NSRange(location: 0, length: mutable.length)
@@ -27,7 +28,7 @@ private extension NSAttributedString {
                 ? srcFont.pointSize
                 : UIFont.preferredFont(forTextStyle: baseTextStyle).pointSize
             
-            let size = baseSize * 1.4
+            let size = customFontSize ?? (baseSize * 1.4)
 
             var weight: UIFont.Weight = .regular
             if preserveBoldItalic, srcFont.fontDescriptor.symbolicTraits.contains(.traitBold) {
@@ -122,6 +123,7 @@ struct HTMLText: View {
     private let baseTextStyle: UIFont.TextStyle
     private let preserveSizes: Bool
     private let preserveBoldItalic: Bool
+    private let customFontSize: CGFloat?
     
     @State private var attributedString: AttributedString?
 
@@ -140,7 +142,8 @@ struct HTMLText: View {
         underlineLinks: Bool = true,
         baseTextStyle: UIFont.TextStyle = .body,
         preserveSizes: Bool = true,
-        preserveBoldItalic: Bool = true
+        preserveBoldItalic: Bool = true,
+        customFontSize: CGFloat? = nil
     ) {
         self.html = html
         self.textColor = textColor
@@ -149,6 +152,7 @@ struct HTMLText: View {
         self.baseTextStyle = baseTextStyle
         self.preserveSizes = preserveSizes
         self.preserveBoldItalic = preserveBoldItalic
+        self.customFontSize = customFontSize
     }
 
     var body: some View {
@@ -175,6 +179,23 @@ struct HTMLText: View {
         .onChange(of: underlineLinks) { _, _ in
             Task { await loadAttributedString() }
         }
+        .onChange(of: customFontSize) { _, _ in
+            Task { await loadAttributedString() }
+        }
+    }
+    
+    /// Modifier to set a custom font size
+    func fontSize(_ size: CGFloat) -> HTMLText {
+        HTMLText(
+            html,
+            textColor: textColor,
+            linkColor: linkColor,
+            underlineLinks: underlineLinks,
+            baseTextStyle: baseTextStyle,
+            preserveSizes: preserveSizes,
+            preserveBoldItalic: preserveBoldItalic,
+            customFontSize: size
+        )
     }
     
     @MainActor
@@ -192,7 +213,8 @@ struct HTMLText: View {
                 .withSystemFonts(
                     baseTextStyle: baseTextStyle,
                     preserveSizes: preserveSizes,
-                    preserveBoldItalic: preserveBoldItalic
+                    preserveBoldItalic: preserveBoldItalic,
+                    customFontSize: customFontSize
                 )
                 .withForegroundColor(UIColor(textColor))
                 .withLinkColor(UIColor(linkColor), underline: underlineLinks)

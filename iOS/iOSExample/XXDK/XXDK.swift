@@ -115,7 +115,10 @@ public class XXDK: XXDKP {
             print("SwiftData: No modelContext set; skipping deleteAllData()")
         }
 
-        ndf = downloadNDF(url: self.networkUrl, certFilePath: self.networkCert)
+        let downloadedNdf = downloadNDF(url: self.networkUrl, certFilePath: self.networkCert)
+        await MainActor.run {
+            ndf = downloadedNdf
+        }
 
         // NOTE: Secret should be pulled from keychain
         let secret = "Hello".data
@@ -135,12 +138,15 @@ public class XXDK: XXDKP {
             }
         }
         var err: NSError?
-        cmix = Bindings.BindingsLoadCmix(
+        let loadedCmix = Bindings.BindingsLoadCmix(
             stateDir.path,
             secret,
             cmixParamsJSON,
             &err
         )
+        await MainActor.run {
+            cmix = loadedCmix
+        }
         if let err {
             print("ERROR: could not load Cmix: " + err.localizedDescription)
             fatalError("could not load Cmix: " + err.localizedDescription)
@@ -208,7 +214,9 @@ public class XXDK: XXDKP {
         if let pubId = publicIdentity {
             do {
                 let identity = try Parser.decodeIdentity(from: pubId)
-                self.codename = identity.codename
+                await MainActor.run {
+                    self.codename = identity.codename
+                }
                 // Persist codename for later reads
                 if let nameData = identity.codename.data(using: .utf8) {
                     do { try cmix.ekvSet("MyCodename", value: nameData) } catch
@@ -246,7 +254,7 @@ public class XXDK: XXDKP {
         // This interacts with the network and requires an accurate clock to connect or you'll see
         // "Timestamp of request must be within last 5 seconds." in the logs.
         // If you have trouble shutdown and start your emulator.
-        DM = Bindings.BindingsNewDMClient(
+        let dmClient = Bindings.BindingsNewDMClient(
             cmix.getID(),
             (notifications?.getID())!,
             dmID,
@@ -254,6 +262,9 @@ public class XXDK: XXDKP {
             dmReceiver,
             &err
         )
+        await MainActor.run {
+            DM = dmClient
+        }
         if let err {
             print(
                 "ERROR: could not load dm client: " + err.localizedDescription
@@ -322,11 +333,14 @@ public class XXDK: XXDKP {
 
                 //                let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
 
-                eventModelBuilder = EventModelBuilder(
-                    model: EventModel(
-                        storageTag: String(describing: storageTagListener.data)
+                await MainActor.run {
+                    eventModelBuilder = EventModelBuilder(
+                        model: EventModel(
+                            storageTag: String(describing: storageTagListener.data)
+                        )
                     )
-                )
+                }
+               
 
                 if let ctx = self.modelContext {
                     self.eventModelBuilder?.configure(modelContext: ctx)
@@ -348,9 +362,10 @@ public class XXDK: XXDKP {
                 }
 
                 // Retain Channels Manager for future channel sends
-                self.channelsManager = cm
-
-                storageTagListener.data = Data(cm.getStorageTag().utf8)
+                await MainActor.run {
+                    self.channelsManager = cm
+                    storageTagListener.data = Data(cm.getStorageTag().utf8)
+                }
 
                 if let e = err {
                     print("ERROR: \(err)")
@@ -454,6 +469,7 @@ public class XXDK: XXDKP {
                     "persistOutgoingMessage: Chat not found for id=\(chatId)"
                 )
             }
+            print("XXDK: ChatMessage(message: \"\(message)\", isIncoming: false, chat: \(chat.id), id: \(messageIdB64), replyTo: \(replyTo ?? "nil"))")
             let outMsg = ChatMessage(
                 message: message,
                 isIncoming: false,
@@ -671,7 +687,7 @@ public class XXDK: XXDKP {
             let reportData = try DM.sendText(
                 toPubKey,
                 partnerToken: partnerToken,
-                message: encodeMessage(msg),
+                message: msg,
                 leaseTimeMS: 0,
                 cmixParamsJSON: "".data
             )
@@ -694,13 +710,13 @@ public class XXDK: XXDKP {
                         }
                         return "Direct Message"
                     }()
-                    self.persistOutgoingMessage(
-                        chatId: chatId,
-                        defaultName: defaultName,
-                        message: msg,
-                        messageIdB64: mid.base64EncodedString(),
-                        dmToken: partnerToken
-                    )
+                     self.persistOutgoingMessage(
+                         chatId: chatId,
+                         defaultName: defaultName,
+                         message: msg,
+                         messageIdB64: mid.base64EncodedString(),
+                         dmToken: partnerToken
+                     )
                 } else {
                     print("DM sendText returned no messageID")
                 }
@@ -727,7 +743,7 @@ public class XXDK: XXDKP {
             let reportData = try DM.sendReply(
                 toPubKey,
                 partnerToken: partnerToken,
-                replyMessage: encodeMessage(msg),
+                replyMessage: msg,
                 replyToBytes: replyToMessageId,
                 leaseTimeMS: 0,
                 cmixParamsJSON: "".data

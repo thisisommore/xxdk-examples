@@ -223,6 +223,62 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     func deleteMessage(_ messageID: Data?) throws -> Bool {
+        guard let messageID = messageID else {
+            log("deleteMessage: messageID is nil")
+            return false
+        }
+        
+        let messageIdB64 = messageID.base64EncodedString()
+        log("deleteMessage: messageId=\(messageIdB64)")
+        
+        guard let ctx = modelContext else {
+            log("deleteMessage: no modelContext available")
+            return false
+        }
+        
+        Task { @MainActor in
+            do {
+                // First, try to find and delete a ChatMessage
+                let messageDescriptor = FetchDescriptor<ChatMessage>(
+                    predicate: #Predicate { $0.id == messageIdB64 }
+                )
+                let messages = try ctx.fetch(messageDescriptor)
+                
+                if !messages.isEmpty {
+                    for message in messages {
+                        log("deleteMessage: Deleting ChatMessage with id=\(messageIdB64)")
+                        ctx.delete(message)
+                    }
+                    try ctx.save()
+                    log("deleteMessage: ChatMessage deleted successfully")
+                    return
+                }
+                
+                // If no message found, check for reactions
+                log("deleteMessage: No ChatMessage found, checking for MessageReaction")
+                let reactionDescriptor = FetchDescriptor<MessageReaction>(
+                    predicate: #Predicate { $0.messageId == messageIdB64 }
+                )
+                let reactions = try ctx.fetch(reactionDescriptor)
+                
+                if !reactions.isEmpty {
+                    for reaction in reactions {
+                        log("deleteMessage: Deleting MessageReaction with messageId=\(messageIdB64), emoji=\(reaction.emoji)")
+                        ctx.delete(reaction)
+                    }
+                    try ctx.save()
+                    log("deleteMessage: MessageReaction(s) deleted successfully")
+                    return
+                }
+                
+                // Neither message nor reaction found
+                log("deleteMessage: Warning - No ChatMessage or MessageReaction found for id=\(messageIdB64)")
+                
+            } catch {
+                print("EventModel: Failed to delete message/reaction: \(error)")
+            }
+        }
+        
         return true
     }
 

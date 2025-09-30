@@ -60,8 +60,12 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receive(_ messageID: Data?, nickname: String?, text: Data?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, mType: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text?.utf8 ?? "empty text")"))
-        persistIncoming(message: text?.utf8 ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
+        let textB64 = String(data: text ?? Data(), encoding: .utf8) ?? ""
+        print("[DMReceiver.receive] Raw text from Data: \(textB64.prefix(50))...")
+        let decodedText = decodeMessage(textB64) ?? "empty text"
+        print("[DMReceiver.receive] Decoded: \(decodedText)")
+        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(decodedText)"))
+        persistIncoming(message: decodedText, codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -77,15 +81,21 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveReply(_ messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
-        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
+        print("[DMReceiver.receiveReply] Raw: \(text?.prefix(50) ?? "")...")
+        let decodedText = decodeMessage(text ?? "") ?? "empty text"
+        print("[DMReceiver.receiveReply] Decoded: \(decodedText)")
+        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(decodedText)"))
+        persistIncoming(message: decodedText, codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
         msgCnt += 1;
         return msgCnt;
     }
     
     func receiveText(_ messageID: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
-        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(text ?? "empty text")"))
-        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
+        print("[DMReceiver.receiveText] Raw: \(text?.prefix(50) ?? "")...")
+        let decodedText = decodeMessage(text ?? "") ?? "empty text"
+        print("[DMReceiver.receiveText] Decoded: \(decodedText)")
+        msgBuf.append(ReceivedMessage(Msg: "\(senderKey?.base64EncodedString() ?? "empty pubkey"): \(decodedText)"))
+        persistIncoming(message: decodedText, codename: nickname, partnerKey: partnerKey, dmToken: dmToken)
         msgCnt += 1;
         return msgCnt;
     }
@@ -101,6 +111,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         Task { @MainActor in
             do {
                 let chat = try fetchOrCreateDMChat(codename: name, ctx: ctx, pubKey: nil, dmToken: nil)
+                print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: true, chat: \(chat.id))")
                 let msg = ChatMessage(message: message, isIncoming: true, chat: chat)
                 chat.messages.append(msg)
                 try ctx.save()
@@ -117,6 +128,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
             do {
                 if let partnerKey {
                     let chat = try fetchOrCreateDMChat(codename: name, ctx: ctx, pubKey: partnerKey, dmToken: dmToken)
+                    print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: true, chat: \(chat.id))")
                     let msg = ChatMessage(message: message, isIncoming: true, chat: chat)
                     chat.messages.append(msg)
                     try ctx.save()

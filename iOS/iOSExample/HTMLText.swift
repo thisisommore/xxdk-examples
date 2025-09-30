@@ -23,9 +23,11 @@ private extension NSAttributedString {
         mutable.enumerateAttributes(in: full, options: []) { attrs, range, _ in
             let srcFont = (attrs[.font] as? UIFont) ?? UIFont.preferredFont(forTextStyle: baseTextStyle)
 
-            let size: CGFloat = preserveSizes
+            let baseSize: CGFloat = preserveSizes
                 ? srcFont.pointSize
                 : UIFont.preferredFont(forTextStyle: baseTextStyle).pointSize
+            
+            let size = baseSize * 1.4
 
             var weight: UIFont.Weight = .regular
             if preserveBoldItalic, srcFont.fontDescriptor.symbolicTraits.contains(.traitBold) {

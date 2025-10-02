@@ -18,7 +18,7 @@ struct ChatMessageRow: View {
         let messageId = result.id
         let replyTo = result.replyTo
         _chatReactions = Query(filter: #Predicate<MessageReaction> { r in
-            r.messageId == messageId
+            r.targetMessageId == messageId
         })
         
         _repliedTo = Query(filter: #Predicate<ChatMessage> { r in

@@ -488,6 +488,7 @@ public class XXDK: XXDKP {
     private func persistReaction(
         messageIdB64: String,
         emoji: String,
+        targetMessageId: String,
         isMe: Bool = true
     ) {
         guard let ctx = self.modelContext else {
@@ -497,9 +498,7 @@ public class XXDK: XXDKP {
         Task { @MainActor in
             do {
                 let reaction = MessageReaction(
-                    messageId: messageIdB64,
-                    emoji: emoji,
-                    isMe: isMe
+                    id: messageIdB64, targetMessageId: targetMessageId, emoji: emoji, isMe: isMe
                 )
                 ctx.insert(reaction)
                 try ctx.save()
@@ -664,18 +663,20 @@ public class XXDK: XXDKP {
                 } else {
                     print("Channel sendReaction returned no messageID")
                 }
+                // Persist locally as 'me'
+                self.persistReaction(
+                    messageIdB64: report.messageID!.base64EncodedString(),
+                    emoji: emoji,
+                    targetMessageId: toMessageIdB64,
+                    isMe: true,
+                )
             } catch {
                 print("Failed to decode ChannelSendReport (reaction): \(error)")
             }
         } catch {
             print("sendReaction(channel) failed: \(error.localizedDescription)")
         }
-        // Persist locally as 'me'
-        self.persistReaction(
-            messageIdB64: toMessageIdB64,
-            emoji: emoji,
-            isMe: true
-        )
+        
     }
 
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32) {
@@ -821,6 +822,12 @@ public class XXDK: XXDKP {
                 } else {
                     print("DM sendReaction returned no messageID")
                 }
+                // Persist locally as 'me'
+                self.persistReaction(
+                    messageIdB64: report.messageID!.base64EncodedString(),
+                    emoji: emoji, targetMessageId: toMessageIdB64,
+                    isMe: true
+                )
             } catch {
                 print(
                     "Failed to decode ChannelSendReport (DM reaction): \(error)"
@@ -832,12 +839,7 @@ public class XXDK: XXDKP {
             )
             fatalError("Unable to send reaction: " + error.localizedDescription)
         }
-        // Persist locally as 'me'
-        self.persistReaction(
-            messageIdB64: toMessageIdB64,
-            emoji: emoji,
-            isMe: true
-        )
+
     }
 
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON {

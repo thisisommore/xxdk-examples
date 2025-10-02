@@ -29,7 +29,7 @@ struct MessageForm<T :XXDKP>: View {
             if let replyTo = replyTo {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Replying to \(replyTo.sender ?? "You")")
+                        Text("Replying to \(replyTo.sender?.codename ?? "You")")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         HTMLText(
@@ -205,7 +205,7 @@ struct MessageForm<T :XXDKP>: View {
         message: "<p>Hey! Can you check out this <a href=\"https://example.com\">link</a>? It has some really interesting information about the project we discussed yesterday.</p>",
         isIncoming: true,
         chat: previewChat,
-        sender: "Alice",
+        sender: Sender(id: "alice-id", pubkey: Data(), codename: "Alice"),
         id: "msg-123"
     )
     container.mainContext.insert(messageToReplyTo)

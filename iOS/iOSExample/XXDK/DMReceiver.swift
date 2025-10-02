@@ -123,7 +123,10 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                 if let partnerKey {
                     let chat = try fetchOrCreateDMChat(codename: name, ctx: backgroundContext, pubKey: partnerKey, dmToken: dmToken)
                     print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: true, chat: \(chat.id), id: \(messageId.base64EncodedString()))")
-                    let msg = ChatMessage(message: message, isIncoming: true, chat: chat, id: messageId.base64EncodedString())
+                    
+                    // Create Sender object
+                    let sender = Sender(id: partnerKey.base64EncodedString(), pubkey: partnerKey, codename: name)
+                    let msg = ChatMessage(message: message, isIncoming: true, chat: chat, sender: sender, id: messageId.base64EncodedString())
                     chat.messages.append(msg)
                     try backgroundContext.save()
                 } else {

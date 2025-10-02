@@ -88,12 +88,35 @@ public struct ChannelSendReportJSON: Decodable {
     }
 }
 
+// Model message for getMessage responses
+// Minimal struct containing only required fields: PubKey and MessageID
+public struct ModelMessageJSON: Codable {
+    public let pubKey: Data
+    public let messageID: Data
+    
+    private enum CodingKeys: String, CodingKey {
+        case pubKey = "PubKey"
+        case messageID = "MessageID"
+    }
+    
+    public init(pubKey: Data, messageID: Data) {
+        self.pubKey = pubKey
+        self.messageID = messageID
+    }
+}
+
 public enum Parser {
     // Shared JSONDecoder for consistency
     private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         // We use explicit CodingKeys above, so default strategy is fine.
         return d
+    }()
+    
+    // Shared JSONEncoder for consistency
+    private static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        return e
     }()
 
     // MARK: - Decode helpers
@@ -112,5 +135,11 @@ public enum Parser {
 
     public static func decodeChannelSendReport(from data: Data) throws -> ChannelSendReportJSON {
         try decoder.decode(ChannelSendReportJSON.self, from: data)
+    }
+    
+    // MARK: - Encode helpers
+    
+    public static func encodeModelMessage(_ message: ModelMessageJSON) throws -> Data {
+        try encoder.encode(message)
     }
 }

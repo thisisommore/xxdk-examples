@@ -75,7 +75,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     // Persist a message into SwiftData if modelContext is set
-    private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, sender: String?, messageIdB64: String? = nil) {
+    private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, senderCodename: String?, senderPubKey: Data?, messageIdB64: String? = nil) {
         guard let ctx = modelContext else {
             log("modelContext not set; skipping persistence for incoming message in channel \(channelName)")
             return
@@ -83,6 +83,13 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         Task { @MainActor in
             do {
                 let chat = try fetchOrCreateChannelChat(channelId: channelId, channelName: channelName, ctx: ctx)
+                
+                // Create Sender object if we have codename and pubkey
+                var sender: Sender? = nil
+                if let codename = senderCodename, let pubKey = senderPubKey {
+                    sender = Sender(id: pubKey.base64EncodedString(), pubkey: pubKey, codename: codename)
+                }
+                
                 let msg: ChatMessage
                 if let mid = messageIdB64, !mid.isEmpty {
                     msg = ChatMessage(message: text, isIncoming: true, chat: chat, sender: sender, id: mid)
@@ -121,7 +128,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         if let decodedText = decodeMessage(messageTextB64) {
             log("Msg on \(channelIdB64) from \(nick): \(decodedText) \(String(describing: messageID))")
             // Persist into SwiftData chat if available
-            persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedText, sender: nick, messageIdB64: messageIdB64)
+            persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedText, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64)
         } else {
             log("Warning: Failed to decode incoming message (b64/zlib) \(messageTextB64) on channel \(channelIdB64) from \(nick); skipping persistence")
         }
@@ -148,7 +155,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             return 0
         }
 
-        Task { @MainActor in
+   
             do {
                 // Find the message within this channel by external messageId
                 let descriptor = FetchDescriptor<ChatMessage>(predicate: #Predicate { msg in
@@ -164,7 +171,6 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             } catch {
                 log("Failed to persist reaction: \(error)")
             }
-        }
         return 0
     }
 
@@ -176,7 +182,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             log("Reply from \(nick): \(decodedReply)")
             // Persist reply as an incoming message
             let rendered = "\(nick) replied: \(decodedReply)"
-            persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: rendered, sender: nickname)
+            persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: rendered, senderCodename: nickname, senderPubKey: pubKey)
         } else {
             log("Warning: Failed to decode reply (b64/zlib) on channel \(channelIdB64) from \(nick); skipping persistence")
         }

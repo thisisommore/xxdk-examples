@@ -22,7 +22,7 @@ struct MessageItem: View {
     let text: String
     let isIncoming: Bool
     let repliedTo: String?
-    let sender: String?
+    let sender: Sender?
     let reactionsSet: Set<String>
     let myReactions: Set<String>
     let timeStamp: Date = Date()
@@ -40,7 +40,7 @@ struct MessageItem: View {
     @State private var reaction: String? = nil
     @State private var shouldTriggerReply: Bool = false
 
-    init(text: String, isIncoming: Bool, repliedTo: String?, sender: String?, reactionsSet: Set<String> = [], myReactions: Set<String> = [], onReply: (() -> Void)? = nil) {
+    init(text: String, isIncoming: Bool, repliedTo: String?, sender: Sender?, reactionsSet: Set<String> = [], myReactions: Set<String> = [], onReply: (() -> Void)? = nil) {
         self.text = text
         self.isIncoming = isIncoming
         self.repliedTo = repliedTo
@@ -109,7 +109,7 @@ struct MessageItem: View {
                                 repliedTo != nil ? 0 : 12
                             )
                     } else if let sender {
-                        Text(sender)
+                        Text(sender.codename)
                             .font(.caption)
                             .foregroundStyle(.black).opacity(0.8).padding(
                                 .top,
@@ -212,7 +212,7 @@ struct MessageItem: View {
                 isIncoming: true,
                 repliedTo:
                     "Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go",
-                sender: "Mayur",
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
                 reactionsSet: ["😂", "❤️", "👍"],
                 myReactions: ["😂", "🔥"]
             )
@@ -224,7 +224,7 @@ struct MessageItem: View {
                 """,
                 isIncoming: true,
                 repliedTo: "Wow lets go",
-                sender: "Mayur",
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
                 reactionsSet: ["😭", "😂"],
                 myReactions: ["💯", "✨", "🙏"]
             )
@@ -240,7 +240,7 @@ struct MessageItem: View {
                 text: "Yup here you go",
                 isIncoming: true,
                 repliedTo: nil,
-                sender: "Mayur",
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
                 reactionsSet: ["❤️"],
                 myReactions: []
             )
@@ -248,7 +248,7 @@ struct MessageItem: View {
                 text: "Yup here you go",
                 isIncoming: true,
                 repliedTo: nil,
-                sender: "Mayur",
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
                 reactionsSet: [],
                 myReactions: ["👍", "😂"]
             )
@@ -280,19 +280,19 @@ struct MessageItem: View {
                 text: "Yup here you go",
                 isIncoming: true,
                 repliedTo: nil,
-                sender: "Mayur"
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
             )
             MessageItem(
                 text: "Yup here you go",
                 isIncoming: true,
                 repliedTo: nil,
-                sender: "Mayur"
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
             )
             MessageItem(
                 text: "Yup here you go",
                 isIncoming: true,
                 repliedTo: nil,
-                sender: "Mayur"
+                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
             )
             Spacer()
         }  // Close VStack

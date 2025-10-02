@@ -37,9 +37,6 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     public func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
-
-    func deleteMessage(_ messageID: Data?) throws {
-    }
     
     func update(fromMessageID messageID: Data?, messageUpdateInfoJSON: Data?, ret0_: UnsafeMutablePointer<Int64>?) throws {
     }
@@ -72,30 +69,38 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     // Persist a message into SwiftData if modelContext is set
-    private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, sender: String?, messageIdB64: String? = nil, replyTo: String? = nil, timestamp: Int64) {
+    private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, senderCodename: String?, senderPubKey: Data?, messageIdB64: String? = nil, replyTo: String? = nil, timestamp: Int64) -> Int64 {
         guard let mainContext = modelContext else {
-            return
+            fatalError("no modelContext")
         }
         
         // Create a background context for this operation
         let backgroundContext = ModelContext(mainContext.container)
         
-        Task { @MainActor in
+
             do {
                 let chat = try fetchOrCreateChannelChat(channelId: channelId, channelName: channelName, ctx: backgroundContext)
+                
+                // Create Sender object if we have codename and pubkey
+                var sender: Sender? = nil
+                if let codename = senderCodename, let pubKey = senderPubKey {
+                    sender = Sender(id: pubKey.base64EncodedString(), pubkey: pubKey, codename: codename)
+                }
+                
                 let msg: ChatMessage
                 if let mid = messageIdB64, !mid.isEmpty {
-                    log("ChatMessage(message: \(text), isIncoming: \(true), chat: \(chat), sender: \(sender), id: \(mid))")
+                    log("ChatMessage(message: \(text), isIncoming: \(true), chat: \(chat), sender: \(senderCodename ?? "nil"), id: \(mid))")
                     msg = ChatMessage(message: text, isIncoming: true, chat: chat, sender: sender, id: mid, replyTo: replyTo, timestamp: timestamp)
                 } else {
                     fatalError("no message id")
                 }
                 chat.messages.append(msg)
                 try backgroundContext.save()
+                return Int64(msg.persistentModelID.hashValue)
             } catch {
-                print("EventModel: Failed to save message: \(error)")
+                fatalError("EventModel: Failed to save message: \(error)")
             }
-        }
+
     }
 
     private let storageTag: String
@@ -109,18 +114,21 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     func receiveMessage(_ channelID: Data?, messageID: Data?, nickname: String?, text: String?, pubKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, lease: Int64, roundID: Int64, messageType: Int64, status: Int64, hidden: Bool) -> Int64 {
+        let messageIdB64 = messageID?.base64EncodedString()
+        let messageTextB64 = text ?? ""
+        if let decodedText = decodeMessage(messageTextB64) {
+            log("[EventReceived] new | \(messageIdB64 ?? "nil") | | \(decodedText)")
+        }
+        
         var err: NSError?
         let identityData = Bindings.BindingsConstructIdentity(pubKey, codeset, &err)
         do {
             let identity = try Parser.decodeIdentity(from: identityData!)
             let channelIdB64 = channelID?.base64EncodedString() ?? "unknown"
-            let messageIdB64 = messageID?.base64EncodedString()
             let nick = identity.codename
-            let messageTextB64 = text ?? ""
             if let decodedText = decodeMessage(messageTextB64) {
-                log("\(decodedText) | \(messageIdB64 ?? "nil") | message")
                 // Persist into SwiftData chat if available
-                persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedText, sender: nick, messageIdB64: messageIdB64, timestamp: timestamp)
+                return persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedText, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64, timestamp: timestamp)
             }
             return 0
         } catch {
@@ -130,47 +138,56 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     func receiveReaction(_ channelID: Data?, messageID: Data?, reactionTo: Data?, nickname: String?, reaction: String?, pubKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, lease: Int64, roundID: Int64, messageType: Int64, status: Int64, hidden: Bool) -> Int64 {
+        log("[EventReceived] new | \(messageID?.base64EncodedString() ?? "nil") | \(reactionTo?.base64EncodedString() ?? "nil") | \(reaction ?? "")")
+        
         let nick = nickname ?? ""
         let reactionText = reaction ?? ""
         let targetMessageIdB64 = reactionTo?.base64EncodedString()
         
-        log("\(reactionText) | \(targetMessageIdB64 ?? "nil") | reaction")
-        
         // Validate inputs
         guard let ctx = modelContext else {
-            return 0
+            fatalError("no model context")
         }
         guard let targetId = targetMessageIdB64, !targetId.isEmpty else {
-            return 0
+            fatalError("no target id")
         }
         guard !reactionText.isEmpty else {
-            return 0
+            fatalError("no reaction")
         }
         
-        Task { @MainActor in
+ 
             do {
-                log("MessageReaction(messageId: \(targetId), emoji: \(reactionText), sender: \(nick))")
+
             
-                let record = MessageReaction(messageId: targetId, emoji: reactionText)
+                // Create Sender object if we have codename and pubkey
+                var sender: Sender? = nil
+                if let pubKey = pubKey {
+                    sender = Sender(id: pubKey.base64EncodedString(), pubkey: pubKey, codename: nick)
+                }
+                
+                let record = MessageReaction(id: messageID!.base64EncodedString(), targetMessageId: targetId, emoji: reactionText, sender: sender)
                 ctx.insert(record)
                 try ctx.save()
+                log("MessageReaction(id: \(messageID!.base64EncodedString()), targetMessageId: \(targetId), emoji: \(reactionText), sender: \(sender))")
+                return Int64(record.persistentModelID.hashValue)
             } catch {
                 fatalError("failed to store message reaction \(error)")
             }
-        }
-        return 0
+        
+        
     }
 
     func deleteReaction(messageId: String, emoji: String) {
+        log("[EventReceived] delete | \(messageId) | | \(emoji)")
         guard let ctx = modelContext else {
             log("deleteReaction: no modelContext available")
             return
         }
         
-        Task { @MainActor in
+
             do {
                 let descriptor = FetchDescriptor<MessageReaction>(
-                    predicate: #Predicate { $0.messageId == messageId && $0.emoji == emoji }
+                    predicate: #Predicate { $0.id == messageId && $0.emoji == emoji }
                 )
                 let reactions = try ctx.fetch(descriptor)
                 
@@ -183,10 +200,15 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             } catch {
                 print("EventModel: Failed to delete reaction: \(error)")
             }
-        }
     }
 
     func receiveReply(_ channelID: Data?, messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, pubKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, lease: Int64, roundID: Int64, messageType: Int64, status: Int64, hidden: Bool) -> Int64 {
+        let messageIdB64 = messageID?.base64EncodedString()
+        let replyTextB64 = text ?? ""
+        if let decodedReply = decodeMessage(replyTextB64) {
+            log("[EventReceived] reply | \(messageIdB64 ?? "nil") | \(reactionTo?.base64EncodedString() ?? "nil") | \(decodedReply)")
+        }
+        
         var err: NSError?
         let identityData = Bindings.BindingsConstructIdentity(pubKey, codeset, &err)
         let nick: String
@@ -198,45 +220,73 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             nick = nickname ?? ""
         }
         let channelIdB64 = channelID?.base64EncodedString() ?? "unknown"
-        let messageIdB64 = messageID?.base64EncodedString()
-        let replyTextB64 = text ?? ""
         guard let reactionTo else {
             fatalError("reactionTo is missing")
         }
         if let decodedReply = decodeMessage(replyTextB64) {
-            log("\(decodedReply) | \(messageIdB64 ?? "nil") | reply")
-            persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedReply, sender: nick, messageIdB64: messageIdB64, replyTo: reactionTo.base64EncodedString(), timestamp: timestamp)
+            return persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedReply, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64, replyTo: reactionTo.base64EncodedString(), timestamp: timestamp)
         }
         return 0
     }
 
     func updateFromMessageID(_ messageID: Data?, messageUpdateInfoJSON: Data?, ret0_: UnsafeMutablePointer<Int64>?) throws -> Bool {
+        log("updateFromMessageID - messageID \(messageID?.utf8) | messageUpdateInfoJSON \(messageUpdateInfoJSON?.utf8)")
         return true
     }
 
     func updateFromUUID(_ uuid: Int64, messageUpdateInfoJSON: Data?) throws -> Bool {
+        log("updateFromUUID - uuid \(uuid) | messageUpdateInfoJSON \(messageUpdateInfoJSON?.utf8)")
         return true
     }
 
     func getMessage(_ messageID: Data?) throws -> Data {
-        return Data()
-    }
-
-    func deleteMessage(_ messageID: Data?) throws -> Bool {
         guard let messageID = messageID else {
-            log("deleteMessage: messageID is nil")
-            return false
+            throw NSError(domain: "EventModel", code: 404, userInfo: [NSLocalizedDescriptionKey: BindingsGetNoMessageErr()])
         }
         
         let messageIdB64 = messageID.base64EncodedString()
-        log("deleteMessage: messageId=\(messageIdB64)")
+        log("[EventReceived] get | \(messageIdB64) | | ")
         
         guard let ctx = modelContext else {
-            log("deleteMessage: no modelContext available")
-            return false
+            throw NSError(domain: "EventModel", code: 500)
         }
         
-        Task { @MainActor in
+        // Check ChatMessage
+        let msgDescriptor = FetchDescriptor<ChatMessage>(
+            predicate: #Predicate { $0.id == messageIdB64 }
+        )
+        if let msg = try? ctx.fetch(msgDescriptor).first {
+            let pubKeyData = msg.sender?.pubkey ?? Data()
+            let modelMsg = ModelMessageJSON(pubKey: pubKeyData, messageID: messageID)
+            return try Parser.encodeModelMessage(modelMsg)
+        }
+        
+        // Check MessageReaction - if message not found, check if it's a reaction
+        let reactionDescriptor = FetchDescriptor<MessageReaction>(
+            predicate: #Predicate { $0.id == messageIdB64 }
+        )
+        if let reaction = try? ctx.fetch(reactionDescriptor).first {
+            let pubKeyData = reaction.sender?.pubkey ?? Data()
+            let modelMsg = ModelMessageJSON(pubKey: pubKeyData, messageID: messageID)
+            return try Parser.encodeModelMessage(modelMsg)
+        }
+        // Not found
+        throw NSError(domain: "EventModel", code: 404, userInfo: [NSLocalizedDescriptionKey: BindingsGetNoMessageErr()])
+    }
+
+    func deleteMessage(_ messageID: Data?) throws {
+        guard let messageID = messageID else {
+            fatalError("message id is nil")
+        }
+        
+        let messageIdB64 = messageID.base64EncodedString()
+        log("[EventReceived] delete | \(messageIdB64) | | ")
+        
+        guard let ctx = modelContext else {
+            fatalError("deleteMessage: no modelContext available")
+        }
+        
+
             do {
                 // First, try to find and delete a ChatMessage
                 let messageDescriptor = FetchDescriptor<ChatMessage>(
@@ -257,7 +307,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 // If no message found, check for reactions
                 log("deleteMessage: No ChatMessage found, checking for MessageReaction")
                 let reactionDescriptor = FetchDescriptor<MessageReaction>(
-                    predicate: #Predicate { $0.messageId == messageIdB64 }
+                    predicate: #Predicate { $0.id == messageIdB64 }
                 )
                 let reactions = try ctx.fetch(reactionDescriptor)
                 
@@ -277,9 +327,8 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             } catch {
                 print("EventModel: Failed to delete message/reaction: \(error)")
             }
-        }
-        
-        return true
+
+    
     }
 
     func muteUser(_ channelID: Data?, pubkey: Data?, unmute: Bool) {

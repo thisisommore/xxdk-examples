@@ -3,16 +3,19 @@ import SwiftData
 
 @Model
 class MessageReaction {
-    var id: UUID = UUID()
-    var messageId: String
+    var id: String
+    var targetMessageId: String
     var emoji: String
     var timestamp: Date
     var isMe: Bool
+    var sender: Sender?
 
-    init(messageId: String, emoji: String, isMe: Bool = false) {
-        self.messageId = messageId
+    init(id: String, targetMessageId: String, emoji: String, sender: Sender? = nil, isMe: Bool = false) {
+        self.targetMessageId = targetMessageId
         self.emoji = emoji
         self.timestamp = Date()
         self.isMe = isMe
+        self.sender = sender
+        self.id = id
     }
 }

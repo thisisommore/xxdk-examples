@@ -196,26 +196,27 @@ struct ChatView : View {
     let previewChatId = "previewChatId"
     let chat = Chat(channelId: previewChatId, name: "Mayur")
 
+    let mockSender = Sender(id: "mock-sender-id", pubkey: Data(), codename: "Mayur")
     var msgs = [
-        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "How's it going?", isIncoming: false, chat: chat),
-        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "Hey Mayur!", isIncoming: false, chat: chat),
-        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "How's it going?", isIncoming: false, chat: chat),
-        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "Hey Mayur!", isIncoming: false, chat: chat),
-        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "How's it going?", isIncoming: false, chat: chat),
-        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "Hey Mayur!", isIncoming: false, chat: chat),
-        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "How's it going?", isIncoming: false, chat: chat),
-        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "Hey Mayur!", isIncoming: false, chat: chat),
-        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "All good! Working on the demo.", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "How's it going?", isIncoming: false, chat: chat),
-        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: "Mayur"),
+        ChatMessage(message: "Hi there 👋", isIncoming: true, chat: chat, sender: mockSender),
         ChatMessage(message: "<p>Hey Mayur!</p>", isIncoming: false, chat: chat)
     ]
     

@@ -59,11 +59,11 @@ class ChatMessage {
     var message: String
     var timestamp: Date
     var isIncoming: Bool
-    var sender: String?
+    var sender: Sender?
     var messageId: String?
     var reactions = [String]()
     var chat: Chat
-    init(message: String, isIncoming: Bool, chat: Chat, sender: String? = nil, id: String = UUID().uuidString) {
+    init(message: String, isIncoming: Bool, chat: Chat, sender: Sender? = nil, id: String = UUID().uuidString) {
         self.id = id
         self.message = message
         self.timestamp = Date()

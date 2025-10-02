@@ -22,7 +22,7 @@ struct iOS_ExampleApp: App {
             Item.self,
             MessageReaction.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let modelConfiguration = ModelConfiguration(schema: schema)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])

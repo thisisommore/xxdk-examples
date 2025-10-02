@@ -15,8 +15,8 @@ struct HomeView<T:XXDKP>: View {
             ForEach(chats) { chat in
                 NavigationLink(value: Destination.chat(chatId: chat.id, chatTitle: chat.name)) {
                     VStack(alignment: .leading) {
-                        Text(chat.name).foregroundStyle(.black)
-                        Text("No messages yet").foregroundStyle(.black)
+                        Text(chat.name).foregroundStyle(.primary)
+                        Text("No messages yet").foregroundStyle(.secondary)
                     }
                 }
                 .buttonStyle(.plain)

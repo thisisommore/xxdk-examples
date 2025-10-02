@@ -76,18 +76,16 @@ public class XXDK: XXDKP {
         // Always create a fresh, unique temp working directory per init
         // e.g., <system tmp>/<UUID> and use "ekv" within it for state
         do {
-            let baseTmp = FileManager.default.temporaryDirectory
-            let uniqueTmp = baseTmp.appendingPathComponent(
-                UUID().uuidString,
-                isDirectory: true
-            )
-            if !FileManager.default.fileExists(atPath: uniqueTmp.path) {
-                try FileManager.default.createDirectory(
-                    at: uniqueTmp,
-                    withIntermediateDirectories: true
-                )
-            }
-            stateDir = uniqueTmp.appendingPathComponent("ekv")
+            let basePath = try FileManager.default.url(
+                           for: .documentDirectory,
+                           in: .userDomainMask,
+                           appropriateFor: nil,
+                           create: false)
+                       stateDir = basePath.appendingPathComponent("xxAppState")
+                       if !FileManager.default.fileExists(atPath: stateDir.path) {
+                           try FileManager.default.createDirectory(at: stateDir, withIntermediateDirectories: true)
+                       }
+                       stateDir = stateDir.appendingPathComponent("ekv")
         } catch let err {
             print(
                 "ERROR: failed to get state directory: "

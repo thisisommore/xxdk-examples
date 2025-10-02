@@ -157,7 +157,7 @@ struct MessageForm<T :XXDKP>: View {
                 }
             )
             .buttonStyle(.borderedProminent).padding(.horizontal, 6).buttonBorderShape(.circle)
-            }.padding(.horizontal, 16).padding(.top, 10).background(.white)
+            }.padding(.horizontal, 16).padding(.top, 10).background(.main)
         }
     }
 }

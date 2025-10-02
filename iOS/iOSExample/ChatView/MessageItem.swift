@@ -75,7 +75,7 @@ struct MessageItem: View {
                         CSpacer(!isIncoming)
 
                         // reply preview
-                        HTMLText(repliedTo, textColor: .black)
+                        HTMLText(repliedTo, textColor: .primary)
                             .fontSize(12)
                             .padding(.leading, 12)
                             .padding(.top, 12)
@@ -111,7 +111,7 @@ struct MessageItem: View {
                     } else if let sender {
                         Text(sender.codename)
                             .font(.caption)
-                            .foregroundStyle(.black).opacity(0.8).padding(
+                            .foregroundStyle(.primary).opacity(0.8).padding(
                                 .top,
                                 repliedTo != nil ? 0 : 12
                             )

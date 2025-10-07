@@ -75,7 +75,7 @@ struct MessageItem: View {
                         CSpacer(!isIncoming)
 
                         // reply preview
-                        HTMLText(repliedTo, textColor: .primary)
+                        HTMLText(repliedTo, textColor: .primary, linkColor: .primary)
                             .fontSize(12)
                             .padding(.leading, 12)
                             .padding(.top, 12)
@@ -231,7 +231,11 @@ struct MessageItem: View {
             MessageItem(
                 text: "Yup here you go",
                 isIncoming: false,
-                repliedTo: "Wow lets go",
+                repliedTo: """
+                Wow lets go <a href="https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free" rel="noopener noreferrer" target="_blank">
+                https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free
+                </a>
+                """,
                 sender: nil,
                 reactionsSet: ["👏", "🔥"],
                 myReactions: ["😎"]

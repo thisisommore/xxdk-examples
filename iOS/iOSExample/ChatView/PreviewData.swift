@@ -95,13 +95,14 @@ var mockMsgs = [
         isIncoming: true,
         chat: chat,
         sender: mockSender,
-        id: UUID().uuidString
+        id: UUID().uuidString,
+        replyTo: "How's it going?"
     ),
     ChatMessage(
         message: "How's it going?",
         isIncoming: false,
         chat: chat,
-        id: UUID().uuidString
+        id: "How's it going?"
     ),
     ChatMessage(
         message: "Hi there 👋",
@@ -121,7 +122,7 @@ var mockMsgs = [
         isIncoming: true,
         chat: chat,
         sender: mockSender,
-        id: UUID().uuidString
+        id: UUID().uuidString,
     ),
     ChatMessage(
         message: "How's it going?",

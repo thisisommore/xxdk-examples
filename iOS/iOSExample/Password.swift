@@ -6,6 +6,8 @@ public struct PasswordCreationView: View {
     @State private var confirm: String = ""
     @State private var attemptedSubmit: Bool = false
     @FocusState private var focusedField: Field?
+    @State private var showImportSheet: Bool = false
+    @State private var importPassword: String = ""
 
     public init() {}
 
@@ -50,8 +52,7 @@ public struct PasswordCreationView: View {
     
     private var strengthColor: Color {
         switch strength {
-        case ..<0.4: return BranchColor.primary.opacity(0.4)
-        case ..<0.8: return BranchColor.primary.opacity(0.7)
+        case ..<0.8: return BranchColor.primary.opacity(0.8)
         default:      return BranchColor.primary
         }
     }
@@ -114,6 +115,7 @@ public struct PasswordCreationView: View {
                             Text(passwordsMatch ? "Passwords match" : "Passwords don't match")
                         }
                         .font(.footnote)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
 
                     // Strength
@@ -137,13 +139,25 @@ public struct PasswordCreationView: View {
                 .buttonStyle(BranchButtonStyle(isEnabled: canContinue))
                 .disabled(!canContinue)
                 .privacySensitive()
+                
+                // Import account button
+                Button(action: { showImportSheet = true }) {
+                    Text("Import an existing account").bold()
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(BranchButtonStyle(isEnabled: true))
             }
+            .animation(.easeInOut(duration: 0.3), value: !confirm.isEmpty || attemptedSubmit)
             .padding(.horizontal, 20)
             .padding(.top, 28)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .privacySensitive()
+        .sheet(isPresented: $showImportSheet) {
+            ImportAccountSheet(importPassword: $importPassword)
+        }
     }
 
     // MARK: - Actions
@@ -166,6 +180,7 @@ public struct PasswordCreationView: View {
 // MARK: - Branch Color Palette
 private enum BranchColor {
     static let primary = Color.haven
+    static let secondary = Color(red: 180/255, green: 140/255, blue: 60/255)
     static let disabled = Color(red: 236/255, green: 186/255, blue: 96/255).opacity(0.5)
     static let light = Color(red: 246/255, green: 206/255, blue: 136/255)
 }
@@ -173,17 +188,28 @@ private enum BranchColor {
 // MARK: - Custom Button Style
 private struct BranchButtonStyle: ButtonStyle {
     let isEnabled: Bool
+    var isSecondary: Bool = false
+    @Environment(\.colorScheme) private var colorScheme
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isEnabled ? BranchColor.primary : .gray.opacity(0.4))
+                    .fill(isEnabled ? (isSecondary ? BranchColor.secondary : BranchColor.primary) : disabledColor)
                     .animation(.easeInOut(duration: 0.3), value: isEnabled)
             )
+            .opacity(isEnabled ? 1.0 : disabledOpacity)
             .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+    }
+    
+    private var disabledColor: Color {
+        colorScheme == .dark ? Color(.systemGray4) : .gray.opacity(0.4)
+    }
+    
+    private var disabledOpacity: Double {
+        colorScheme == .dark ? 0.5 : 1.0
     }
 }
 
@@ -229,6 +255,111 @@ private struct LabeledSecureField: View {
 
 private extension Color {
     static let separator = Color(UIColor.separator)
+}
+
+// MARK: - Import Account Sheet
+private struct ImportAccountSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var importPassword: String
+    @State private var selectedFileURL: URL?
+    @State private var showFilePicker = false
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Import your account")
+                            .font(.title2)
+                            .bold()
+                        
+                        Text("Note that importing your account will only restore your codename. You need to rejoin manually any previously joined channel")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    
+                    // File picker
+                    Button(action: { showFilePicker = true }) {
+                        HStack {
+                            Image(systemName: "doc")
+                            Text(selectedFileURL?.lastPathComponent ?? "Choose a file")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.secondarySystemBackground))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(Color.separator, lineWidth: 1)
+                        )
+                    }
+                    .foregroundStyle(.primary)
+                    
+                    // Password field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Unlock export with your password")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        
+                        SecureField("-", text: $importPassword)
+                            .textContentType(.password)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.secondarySystemBackground))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(Color.separator, lineWidth: 1)
+                            )
+                    }
+                    
+                    // Import button
+                    Button(action: handleImport) {
+                        Text("Import").bold()
+                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(BranchButtonStyle(isEnabled: !importPassword.isEmpty && selectedFileURL != nil))
+                    .disabled(importPassword.isEmpty || selectedFileURL == nil)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                selectedFileURL = url
+            }
+        }
+    }
+    
+    private func handleImport() {
+        // Handle import logic here
+        dismiss()
+    }
 }
 
 #Preview {

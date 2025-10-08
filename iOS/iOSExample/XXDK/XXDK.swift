@@ -1036,5 +1036,46 @@ public class XXDK: XXDKP {
         
         return try Parser.decodeChannel(from: channelJSONString)
     }
+    
+    /// Decode a private channel URL with password
+    /// - Parameters:
+    ///   - url: The private channel share URL
+    ///   - password: The password to decrypt the URL
+    /// - Returns: Pretty print format of the channel
+    /// - Throws: Error if DecodePrivateURL fails
+    public func decodePrivateURL(url: String, password: String) throws -> String {
+        var err: NSError?
+        let prettyPrint = Bindings.BindingsDecodePrivateURL(url, password, &err)
+        
+        if let error = err {
+            throw error
+        }
+        
+        return prettyPrint
+    }
+    
+    /// Get channel data from a private channel URL with password
+    /// - Parameters:
+    ///   - url: The private channel share URL
+    ///   - password: The password to decrypt the URL
+    /// - Returns: Decoded ChannelJSON containing channel information
+    /// - Throws: Error if DecodePrivateURL, GetChannelJSON, or JSON decoding fails
+    public func getPrivateChannelFromURL(url: String, password: String) throws -> ChannelJSON {
+        var err: NSError?
+        
+        // Step 1: Decode the private URL with password to get pretty print
+        let prettyPrint = try decodePrivateURL(url: url, password: password)
+        
+        // Step 2: Get channel JSON from pretty print
+        guard let channelJSONString = Bindings.BindingsGetChannelJSON(prettyPrint, &err) else {
+            throw err ?? NSError(domain: "XXDK", code: -2, userInfo: [NSLocalizedDescriptionKey: "GetChannelJSON returned nil"])
+        }
+        
+        if let error = err {
+            throw error
+        }
+        
+        return try Parser.decodeChannel(from: channelJSONString)
+    }
 
 }

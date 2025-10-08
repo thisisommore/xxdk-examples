@@ -26,6 +26,8 @@ import SwiftData
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON
     func getChannelPrivacyLevel(url: String) throws -> PrivacyLevel
     func getChannelFromURL(url: String) throws -> ChannelJSON
+    func decodePrivateURL(url: String, password: String) throws -> String
+    func getPrivateChannelFromURL(url: String, password: String) throws -> ChannelJSON
 }
 // These are common helpers extending the string class which are essential for working with XXDK
 extension StringProtocol {

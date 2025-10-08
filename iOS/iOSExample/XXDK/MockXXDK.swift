@@ -59,6 +59,21 @@ public class XXDKMock: XXDKP {
             description: "This is a mock channel for testing"
         )
     }
+    
+    func decodePrivateURL(url: String, password: String) throws -> String {
+        // Mock: return the URL as prettyPrint
+        return url
+    }
+    
+    func getPrivateChannelFromURL(url: String, password: String) throws -> ChannelJSON {
+        // Mock: return sample private channel data
+        return ChannelJSON(
+            receptionId: "mock-reception-id",
+            channelId: "mock-private-channel-id",
+            name: "Mock Private Channel",
+            description: "This is a mock private channel for testing"
+        )
+    }
     func load() async {
         do {
             print("starting wait")

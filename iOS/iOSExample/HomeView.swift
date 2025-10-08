@@ -45,41 +45,83 @@ struct NewChatView<T:XXDKP>: View {
     @State private var channelData: ChannelJSON?
     @State private var errorMessage: String?
     @State private var isJoining: Bool = false
+    @State private var showPasswordSheet: Bool = false
+    @State private var isPrivateChannel: Bool = false
+    @State private var prettyPrint: String?
     
     var body: some View {
-        VStack {
-            Form {
-                Text("Enter invite link")
-                TextField("haven", text: $inviteLink)
-                
-                if let error = errorMessage {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .font(.caption)
+        NavigationView {
+            VStack {
+                Form {
+                Section(header: Text("Enter invite link")) {
+                    TextEditor(text: $inviteLink)
+                        .frame(minHeight: 100, maxHeight: 450)
+                        .font(.body)
                 }
-            }
-            .toolbar(content: {
-                Button(action: { dismiss() }, label: {Image(systemName: "xmark")})
-            })
+                    
+                    if let error = errorMessage {
+                        Section {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .font(.caption)
+                        }
+                    }
+                }
+                .toolbar(content: {
+                    Button(action: { dismiss() }, label: {Image(systemName: "xmark")})
+                })
      
             Button(action: {
                 let trimmed = inviteLink.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty else { return }
                 
                 do {
-                    print("getting channel from url")
-                    let channel = try xxdk.getChannelFromURL(url: trimmed)
-                    print("channel data \(channel)")
-                    channelData = channel
-                    errorMessage = nil
+                    // Check privacy level first
+                    let privacyLevel = try xxdk.getChannelPrivacyLevel(url: trimmed)
+                    
+                    if privacyLevel == .secret {
+                        // Private channel - show password input
+                        isPrivateChannel = true
+                        showPasswordSheet = true
+                        errorMessage = nil
+                    } else {
+                        // Public channel - proceed directly
+                        print("getting channel from url")
+                        let channel = try xxdk.getChannelFromURL(url: trimmed)
+                        print("channel data \(channel)")
+                        channelData = channel
+                        errorMessage = nil
+                    }
                 } catch {
                     errorMessage = "Failed to get channel: \(error.localizedDescription)"
                 }
             }, label: {
                 Text("Start Conversation")
+                    .frame(maxWidth: .infinity)
             })
             .buttonStyle(.borderedProminent)
-            .padding()
+            .padding(.horizontal)
+        }
+        .sheet(isPresented: $showPasswordSheet) {
+            PasswordInputView(
+                url: inviteLink,
+                onConfirm: { password in
+                    do {
+                        let pp = try xxdk.decodePrivateURL(url: inviteLink, password: password)
+                        prettyPrint = pp
+                        let channel = try xxdk.getPrivateChannelFromURL(url: inviteLink, password: password)
+                        channelData = channel
+                        showPasswordSheet = false
+                        errorMessage = nil
+                    } catch {
+                        errorMessage = "Failed to decrypt channel: \(error.localizedDescription)"
+                        showPasswordSheet = false
+                    }
+                },
+                onCancel: {
+                    showPasswordSheet = false
+                }
+            )
         }
         .sheet(item: $channelData) { channel in
             ChannelConfirmationView(
@@ -93,6 +135,9 @@ struct NewChatView<T:XXDKP>: View {
                 }
             )
         }
+            .navigationTitle("Join Channel")
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
     
     private func joinChannel(url: String, channelData: ChannelJSON) async {
@@ -101,7 +146,15 @@ struct NewChatView<T:XXDKP>: View {
         
         do {
             print("Joining channel: \(channelData.name)")
-            let joinedChannel = try await xxdk.joinChannelFromURL(url)
+            
+            let joinedChannel: ChannelJSON
+            // Use prettyPrint if available (private channel), otherwise decode from URL (public channel)
+            if let pp = prettyPrint {
+                joinedChannel = try await xxdk.joinChannel(pp)
+            } else {
+                joinedChannel = try await xxdk.joinChannelFromURL(url)
+            }
+            
             print("Successfully joined channel: \(joinedChannel)")
             
             // Create and save the chat to the database
@@ -115,16 +168,63 @@ struct NewChatView<T:XXDKP>: View {
             
             print("Chat saved to database: \(newChat.name)")
             
-            // Dismiss both sheets
+            // Dismiss both sheets and reset state
             self.channelData = nil
+            self.prettyPrint = nil
             dismiss()
         } catch {
             print("Failed to join channel: \(error)")
             errorMessage = "Failed to join channel: \(error.localizedDescription)"
             self.channelData = nil
+            self.prettyPrint = nil
         }
         
         isJoining = false
+    }
+}
+
+struct PasswordInputView: View {
+    let url: String
+    let onConfirm: (String) -> Void
+    let onCancel: () -> Void
+    
+    @State private var password: String = ""
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Private Channel")) {
+                    Text("This channel is password protected. Enter the password to continue.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Section(header: Text("Password")) {
+                    SecureField("Enter password", text: $password)
+                        .textContentType(.password)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                }
+            }
+            .navigationTitle("Enter Password")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        onCancel()
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Confirm") {
+                        onConfirm(password)
+                        dismiss()
+                    }
+                    .disabled(password.isEmpty)
+                }
+            }
+        }
     }
 }
 

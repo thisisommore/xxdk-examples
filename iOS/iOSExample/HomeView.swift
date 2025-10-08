@@ -128,9 +128,9 @@ struct NewChatView<T:XXDKP>: View {
                 channelName: channel.name,
                 channelURL: inviteLink,
                 isJoining: $isJoining,
-                onConfirm: {
+                onConfirm: { enableDM in
                     Task {
-                        await joinChannel(url: inviteLink, channelData: channel)
+                        await joinChannel(url: inviteLink, channelData: channel, enableDM: enableDM)
                     }
                 }
             )
@@ -140,7 +140,7 @@ struct NewChatView<T:XXDKP>: View {
         }
     }
     
-    private func joinChannel(url: String, channelData: ChannelJSON) async {
+    private func joinChannel(url: String, channelData: ChannelJSON, enableDM: Bool) async {
         isJoining = true
         errorMessage = nil
         
@@ -160,6 +160,15 @@ struct NewChatView<T:XXDKP>: View {
             // Create and save the chat to the database
             guard let channelId = joinedChannel.channelId else {
                 throw MyError.runtimeError("Channel ID is missing")
+            }
+            
+            // Enable or disable direct messages based on toggle
+            if enableDM {
+                print("Enabling direct messages for channel: \(channelId)")
+                try xxdk.enableDirectMessages(channelId: channelId)
+            } else {
+                print("Disabling direct messages for channel: \(channelId)")
+                try xxdk.disableDirectMessages(channelId: channelId)
             }
             
             let newChat = Chat(channelId: channelId, name: joinedChannel.name)

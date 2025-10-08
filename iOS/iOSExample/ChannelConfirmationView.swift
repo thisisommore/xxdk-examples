@@ -11,7 +11,7 @@ struct ChannelConfirmationView: View {
     let channelName: String
     let channelURL: String
     @Binding var isJoining: Bool
-    let onConfirm: () -> Void
+    let onConfirm: (Bool) -> Void
     
     @State private var enableDM = false
     @Environment(\.dismiss) var dismiss
@@ -65,7 +65,7 @@ struct ChannelConfirmationView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Join") {
-                        onConfirm()
+                        onConfirm(enableDM)
                     }
                     .disabled(isJoining)
                 }
@@ -80,8 +80,8 @@ struct ChannelConfirmationView: View {
         channelName: "xx Network General",
         channelURL: "<Speakeasy-v3:xxGeneralChat|description:Talking about the xx network|level:Public>",
         isJoining: $isJoining,
-        onConfirm: {
-            print("Confirmed!")
+        onConfirm: { enableDM in
+            print("Confirmed! Enable DM: \(enableDM)")
         }
     )
 }

@@ -1077,5 +1077,45 @@ public class XXDK: XXDKP {
         
         return try Parser.decodeChannel(from: channelJSONString)
     }
+    
+    /// Enable direct messages for a channel
+    /// - Parameter channelId: The channel ID (base64-encoded)
+    /// - Throws: Error if EnableDirectMessages fails or channels manager is not initialized
+    public func enableDirectMessages(channelId: String) throws {
+        guard let cm = channelsManager else {
+            throw MyError.runtimeError("Channels Manager not initialized")
+        }
+        
+        // Channel IDs are base64 in our storage; attempt base64 decode first, fallback to UTF-8 bytes
+        let channelIdData = Data(base64Encoded: channelId) ?? channelId.data(using: .utf8) ?? Data()
+        
+        do {
+            try cm.enableDirectMessages(channelIdData)
+        } catch {
+            fatalError("failed to enable direct messages \(error)")
+        }
+        
+        print("Successfully enabled direct messages for channel: \(channelId)")
+    }
+    
+    /// Disable direct messages for a channel
+    /// - Parameter channelId: The channel ID (base64-encoded)
+    /// - Throws: Error if DisableDirectMessages fails or channels manager is not initialized
+    public func disableDirectMessages(channelId: String) throws {
+        guard let cm = channelsManager else {
+            throw MyError.runtimeError("Channels Manager not initialized")
+        }
+        
+        // Channel IDs are base64 in our storage; attempt base64 decode first, fallback to UTF-8 bytes
+        let channelIdData = Data(base64Encoded: channelId) ?? channelId.data(using: .utf8) ?? Data()
+        
+        do {
+            try cm.disableDirectMessages(channelIdData)
+        } catch {
+            fatalError("failed to disable direct messages \(error)")
+        }
+        
+        print("Successfully disabled direct messages for channel: \(channelId)")
+    }
 
 }

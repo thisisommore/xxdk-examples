@@ -74,6 +74,17 @@ public class XXDKMock: XXDKP {
             description: "This is a mock private channel for testing"
         )
     }
+    
+    func enableDirectMessages(channelId: String) throws {
+        // Mock: no-op
+        print("Mock: Enabled direct messages for channel: \(channelId)")
+    }
+    
+    func disableDirectMessages(channelId: String) throws {
+        // Mock: no-op
+        print("Mock: Disabled direct messages for channel: \(channelId)")
+    }
+    
     func load() async {
         do {
             print("starting wait")

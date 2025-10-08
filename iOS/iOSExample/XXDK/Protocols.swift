@@ -28,6 +28,8 @@ import SwiftData
     func getChannelFromURL(url: String) throws -> ChannelJSON
     func decodePrivateURL(url: String, password: String) throws -> String
     func getPrivateChannelFromURL(url: String, password: String) throws -> ChannelJSON
+    func enableDirectMessages(channelId: String) throws
+    func disableDirectMessages(channelId: String) throws
 }
 // These are common helpers extending the string class which are essential for working with XXDK
 extension StringProtocol {

@@ -85,6 +85,16 @@ public class XXDKMock: XXDKP {
         print("Mock: Disabled direct messages for channel: \(channelId)")
     }
     
+    func areDMsEnabled(channelId: String) throws -> Bool {
+        // Mock: return true by default
+        return true
+    }
+    
+    func leaveChannel(channelId: String) throws {
+        // Mock: no-op
+        print("Mock: Left channel: \(channelId)")
+    }
+    
     func load() async {
         do {
             print("starting wait")

@@ -1117,5 +1117,47 @@ public class XXDK: XXDKP {
         
         print("Successfully disabled direct messages for channel: \(channelId)")
     }
+    
+    /// Check if direct messages are enabled for a channel
+    /// - Parameter channelId: The channel ID (base64-encoded)
+    /// - Returns: True if DMs are enabled, false otherwise
+    /// - Throws: Error if AreDMsEnabled fails or channels manager is not initialized
+    public func areDMsEnabled(channelId: String) throws -> Bool {
+        guard let cm = channelsManager else {
+            throw MyError.runtimeError("Channels Manager not initialized")
+        }
+        
+        // Channel IDs are base64 in our storage; attempt base64 decode first, fallback to UTF-8 bytes
+        let channelIdData = Data(base64Encoded: channelId) ?? channelId.data(using: .utf8) ?? Data()
+        
+        var result = ObjCBool(false)
+ 
+        
+        try cm.areDMsEnabled(channelIdData, ret0_: &result)
+        
+      
+        
+        return result.boolValue
+    }
+    
+    /// Leave a channel
+    /// - Parameter channelId: The channel ID (base64-encoded)
+    /// - Throws: Error if LeaveChannel fails or channels manager is not initialized
+    public func leaveChannel(channelId: String) throws {
+        guard let cm = channelsManager else {
+            throw MyError.runtimeError("Channels Manager not initialized")
+        }
+        
+        // Channel IDs are base64 in our storage; attempt base64 decode first, fallback to UTF-8 bytes
+        let channelIdData = Data(base64Encoded: channelId) ?? channelId.data(using: .utf8) ?? Data()
+        
+        do {
+            try cm.leaveChannel(channelIdData)
+        } catch {
+            fatalError("failed to leave channel \(error)")
+        }
+        
+        print("Successfully left channel: \(channelId)")
+    }
 
 }

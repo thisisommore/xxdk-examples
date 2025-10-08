@@ -29,6 +29,8 @@ class Chat {
     var id: String
     // Human-readable name (channel name or partner codename)
     var name: String
+    // Channel description
+    var channelDescription: String?
 
     // needed for direct dm
     var dmToken: Int32?
@@ -36,9 +38,10 @@ class Chat {
     var messages = [ChatMessage]()
 
     // General initializer (use for channels where you have a channel id and name)
-    init(channelId: String, name: String) {
+    init(channelId: String, name: String, description: String? = nil) {
         self.id = channelId
         self.name = name
+        self.channelDescription = description
     }
 
     // initializer for DM chats where pubkey and dmToken is required

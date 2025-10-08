@@ -26,6 +26,8 @@ struct ChatView: View {
     @Environment(\.dismiss) private var dismiss
     @State var abc: String = ""
     @State private var replyingTo: ChatMessage? = nil
+    @State private var showChannelOptions: Bool = false
+    @EnvironmentObject var xxdk: XXDK
 
     init(width: CGFloat, chatId: String, chatTitle: String) {
         self.width = width
@@ -77,7 +79,30 @@ struct ChatView: View {
                         }
                     )
                 }
-                .navigationTitle(chatTitle)
+            }
+            .navigationTitle(chatTitle)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Button {
+                        showChannelOptions = true
+                    } label: {
+                        Text(chatTitle)
+                            .font(.headline)
+                    }
+                }
+            }
+            .sheet(isPresented: $showChannelOptions) {
+                ChannelOptionsView<XXDK>(chat: chat) {
+                    Task {
+                        do {
+                            try xxdk.leaveChannel(channelId: chatId)
+                            dismiss()
+                        } catch {
+                            print("Failed to leave channel: \(error)")
+                        }
+                    }
+                }
+                .environmentObject(xxdk)
             }
 
 
@@ -99,11 +124,13 @@ struct ChatView: View {
         reactions.forEach { container.mainContext.insert($0) }
     }()
     // Return the view wired up with our model container and mock XXDK service
-    return ChatView(
+  
+    return NavigationStack {
+        ChatView(
         width: UIScreen.w(100),
         chatId: chat.id,
         chatTitle: chat.name
     )
     .modelContainer(container)
-    .environmentObject(XXDKMock())
+    .environmentObject(XXDKMock())}
 }

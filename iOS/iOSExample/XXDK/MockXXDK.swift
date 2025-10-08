@@ -28,8 +28,36 @@ public class XXDKMock: XXDKP {
         // Mock DM reply: no-op
     }
     var codename: String? = "Manny"
+    
+    func joinChannelFromURL(_ url: String) async throws -> ChannelJSON {
+        // Mock: simulate URL decode and join
+        return try await joinChannel(url) // For mock, treat URL as prettyPrint
+    }
+    
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON {
-        throw MyError.runtimeError("join chnnale")
+        // Mock: return sample joined channel data after a short delay
+        try await Task.sleep(for: .seconds(1))
+        return ChannelJSON(
+            receptionId: "mock-reception-id",
+            channelId: "mock-channel-id-\(UUID().uuidString)",
+            name: "Mock Joined Channel",
+            description: "This is a mock joined channel"
+        )
+    }
+    
+    func getChannelPrivacyLevel(url: String) throws -> PrivacyLevel {
+        // Mock: return public by default
+        return .publicChannel
+    }
+    
+    func getChannelFromURL(url: String) throws -> ChannelJSON {
+        // Mock: return sample channel data
+        return ChannelJSON(
+            receptionId: "mock-reception-id",
+            channelId: "mock-channel-id",
+            name: "Mock Channel",
+            description: "This is a mock channel for testing"
+        )
     }
     func load() async {
         do {

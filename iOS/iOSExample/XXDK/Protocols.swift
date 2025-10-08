@@ -22,7 +22,10 @@ import SwiftData
     func sendDM(msg: String, channelId: String)
     func sendReply(msg: String, channelId: String, replyToMessageIdB64: String)
     func sendReply(msg: String, toPubKey: Data, partnerToken: Int32, replyToMessageIdB64: String)
+    func joinChannelFromURL(_ url: String) async throws -> ChannelJSON
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON
+    func getChannelPrivacyLevel(url: String) throws -> PrivacyLevel
+    func getChannelFromURL(url: String) throws -> ChannelJSON
 }
 // These are common helpers extending the string class which are essential for working with XXDK
 extension StringProtocol {

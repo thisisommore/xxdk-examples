@@ -38,6 +38,7 @@ public class XXDK: XXDKP {
     private var networkUrl = MAINNET_URL
     private var networkCert = MAINNET_CERT
     private var stateDir: URL
+    private var selfPubKey: Data?
 
     @Published var codename: String?
     // These are initialized after loading
@@ -840,6 +841,28 @@ public class XXDK: XXDKP {
 
     }
 
+    /// Join a channel using a URL (public share link)
+    /// - Parameter url: The channel share URL
+    /// - Returns: Decoded ChannelJSON containing channel information
+    /// - Throws: Error if DecodePublicURL or joinChannel fails
+    func joinChannelFromURL(_ url: String) async throws -> ChannelJSON {
+        var err: NSError?
+        
+        // Decode the URL to get pretty print format
+        let prettyPrint = Bindings.BindingsDecodePublicURL(url, &err)
+        
+        if let error = err {
+            throw error
+        }
+        
+        // Join using the pretty print format
+        return try await joinChannel(prettyPrint)
+    }
+    
+    /// Join a channel using pretty print format
+    /// - Parameter prettyPrint: The channel descriptor in pretty print format
+    /// - Returns: Decoded ChannelJSON containing channel information
+    /// - Throws: Error if joining fails
     func joinChannel(_ prettyPrint: String) async throws -> ChannelJSON {
         try await Task.sleep(for: .seconds(20))
         guard let cmix else { throw MyError.runtimeError("no net") }
@@ -968,6 +991,50 @@ public class XXDK: XXDKP {
         // Golang functions uss a `return val or nil, nil or err` pattern, so ndf will be valid data after
         // checking if the error has anything in it.
         return ndf!
+    }
+    
+    // MARK: - Channel URL Utilities
+    
+    /// Get the privacy level for a given channel URL
+    /// - Parameter url: The channel share URL
+    /// - Returns: PrivacyLevel indicating if password is required (secret) or not (public)
+    /// - Throws: Error if GetShareUrlType fails
+    public func getChannelPrivacyLevel(url: String) throws -> PrivacyLevel {
+        var err: NSError?
+        var typeValue: Int = 0
+        Bindings.BindingsGetShareUrlType(url, &typeValue, &err)
+        
+        if let error = err {
+            throw error
+        }
+        
+        return typeValue == 2 ? .secret : .publicChannel
+    }
+    
+    /// Get channel data from a channel URL
+    /// - Parameter url: The channel share URL
+    /// - Returns: Decoded ChannelJSON containing channel information
+    /// - Throws: Error if DecodePublicURL, GetChannelJSON, or JSON decoding fails
+    public func getChannelFromURL(url: String) throws -> ChannelJSON {
+        var err: NSError?
+        
+        // Step 1: Decode the URL to get pretty print
+        let prettyPrint = Bindings.BindingsDecodePublicURL(url, &err)
+        
+        if let error = err {
+            throw error
+        }
+        
+        // Step 2: Get channel JSON from pretty print
+        guard let channelJSONString = Bindings.BindingsGetChannelJSON(prettyPrint, &err) else {
+            throw err ?? NSError(domain: "XXDK", code: -2, userInfo: [NSLocalizedDescriptionKey: "GetChannelJSON returned nil"])
+        }
+        
+        if let error = err {
+            throw error
+        }
+        
+        return try Parser.decodeChannel(from: channelJSONString)
     }
 
 }

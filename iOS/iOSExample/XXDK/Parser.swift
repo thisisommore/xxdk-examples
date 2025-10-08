@@ -6,10 +6,17 @@
 //
 
 import Foundation
+import Bindings
 
 // MARK: - Decoders / Parsers centralization
 // This file centralizes JSON models and decode helpers used across the app.
 // Add new payload models and decode helpers here to keep parsing consistent.
+
+// MARK: - Privacy Level
+public enum PrivacyLevel: Int {
+    case publicChannel = 0
+    case secret = 2
+}
 
 // Mirrors the TypeScript decoder mapping { IsReady: boolean, HowClose: number }
 public struct IsReadyInfoJSON: Decodable {
@@ -62,11 +69,16 @@ public struct IdentityJSON: Decodable {
 
 // Channel info returned by JoinChannel
 // Keys map to: ReceptionID, ChannelID, Name, Description
-public struct ChannelJSON: Decodable {
+public struct ChannelJSON: Decodable, Identifiable {
     public let receptionId: String?
     public let channelId: String?
     public let name: String
     public let description: String
+    
+    // Identifiable conformance
+    public var id: String {
+        channelId ?? name
+    }
 
     private enum CodingKeys: String, CodingKey {
         case receptionId = "ReceptionID"

@@ -54,7 +54,7 @@ struct LandingPage<Model>: View where Model: XXDKP {
                     HomeView<XXDK>(width: UIScreen.w(100))
                         .navigationTitle("Home")
                 case let .chat(chatId, chatTitle):
-                    ChatView(width: UIScreen.w(100), chatId: chatId, chatTitle: chatTitle)
+                    ChatView<XXDK>(width: UIScreen.w(100), chatId: chatId, chatTitle: chatTitle)
                 }
             }
         }

@@ -31,7 +31,7 @@ struct SideView: View {
                             rightW = UIScreen.w(100)-leftW
                         }
                 )
-            ChatView(width: rightW,chatId: "", chatTitle: "yo")
+            ChatView<XXDK>(width: rightW,chatId: "", chatTitle: "yo")
         }
         .onAppear {
             leftW = minWidthLeft

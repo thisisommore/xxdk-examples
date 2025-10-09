@@ -8,7 +8,7 @@
 import SwiftData
 import SwiftUI
 
-struct ChatView: View {
+struct ChatView<T: XXDKP>: View {
     let width: CGFloat
     let chatId: String
     let chatTitle: String
@@ -27,7 +27,7 @@ struct ChatView: View {
     @State var abc: String = ""
     @State private var replyingTo: ChatMessage? = nil
     @State private var showChannelOptions: Bool = false
-    @EnvironmentObject var xxdk: XXDK
+    @EnvironmentObject var xxdk: T
 
     init(width: CGFloat, chatId: String, chatTitle: String) {
         self.width = width
@@ -92,11 +92,21 @@ struct ChatView: View {
                 }
             }
             .sheet(isPresented: $showChannelOptions) {
-                ChannelOptionsView<XXDK>(chat: chat) {
+                ChannelOptionsView<T>(chat: chat) {
                     Task {
                         do {
                             try xxdk.leaveChannel(channelId: chatId)
-                            dismiss()
+                            await MainActor.run {
+                                if let chat = chat {
+                                    modelContext.delete(chat)
+                                    do {
+                                        try modelContext.save()
+                                    } catch {
+                                        print("Failed to save context after deleting chat: \(error)")
+                                    }
+                                }
+                                dismiss()
+                            }
                         } catch {
                             print("Failed to leave channel: \(error)")
                         }
@@ -126,7 +136,7 @@ struct ChatView: View {
     // Return the view wired up with our model container and mock XXDK service
   
     return NavigationStack {
-        ChatView(
+        ChatView<XXDKMock>(
         width: UIScreen.w(100),
         chatId: chat.id,
         chatTitle: chat.name

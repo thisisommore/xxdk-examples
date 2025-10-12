@@ -28,19 +28,20 @@ struct MessageItem: View {
     let timeStamp: Date = Date()
     var calendar = Calendar.current
     var onReply: (() -> Void)?
+    var onDM: ((String, Int32, Data) -> Void)?
     enum Emoji: String, CaseIterable, Identifiable {
         case laugh, laughLound, redHeart, Cry, Like, custom, None
         var id: Self { self }
     }
-
+    
     @State private var selectedFlavor: Emoji = .None
-
+    
     var time: String = ""
     @State private var isEmojiSheetPresented: Bool = false
     @State private var reaction: String? = nil
     @State private var shouldTriggerReply: Bool = false
-
-    init(text: String, isIncoming: Bool, repliedTo: String?, sender: Sender?, reactionsSet: Set<String> = [], myReactions: Set<String> = [], onReply: (() -> Void)? = nil) {
+    
+    init(text: String, isIncoming: Bool, repliedTo: String?, sender: Sender?, reactionsSet: Set<String> = [], myReactions: Set<String> = [], onReply: (() -> Void)? = nil, onDM: ((String, Int32, Data) -> Void)? = nil) {
         self.text = text
         self.isIncoming = isIncoming
         self.repliedTo = repliedTo
@@ -48,10 +49,11 @@ struct MessageItem: View {
         self.reactionsSet = reactionsSet
         self.myReactions = myReactions
         self.onReply = onReply
+        self.onDM = onDM
         let hour = calendar.component(.hour, from: timeStamp)
         let minute = calendar.component(.minute, from: timeStamp)
         let second = calendar.component(.second, from: timeStamp)
-
+        
         time = "\(hour):\(minute)"
     }
     
@@ -64,16 +66,16 @@ struct MessageItem: View {
         default: return .None
         }
     }
-
+    
     var body: some View {
         HStack {
             CSpacer(!isIncoming)
             VStack(alignment: .leading, spacing: 2) {
                 if let repliedTo {
-
+                    
                     HStack {
                         CSpacer(!isIncoming)
-
+                        
                         // reply preview
                         HTMLText(repliedTo, textColor: .primary, linkColor: .primary)
                             .fontSize(12)
@@ -95,11 +97,11 @@ struct MessageItem: View {
                             }).lineLimit(4)
                         CSpacer(isIncoming)
                     }.frame(maxWidth: UIScreen.w(80))
-
+                    
                 }
                 HStack {
                     CSpacer(!isIncoming)
-
+                    
                     // sender
                     if !isIncoming {
                         Text("You")
@@ -120,7 +122,6 @@ struct MessageItem: View {
                 }
                 HStack {
                     CSpacer(!isIncoming)
-
                     // Message
                     HTMLText(text)
                         .padding(.horizontal, 12)
@@ -137,21 +138,29 @@ struct MessageItem: View {
                         )
                         .contextMenu(menuItems: {
                             Picker("React", selection: $selectedFlavor) {
-                              
+                                
                                 
                                 Button(action: {}) {
                                     Image(systemName: "plus")
                                 }
-                                    .tag(Emoji.custom)
+                                .tag(Emoji.custom)
                             }
                             .pickerStyle(.palette)
-
+                            
                             Button {
                                 shouldTriggerReply = true
                             } label: {
                                 Label("Reply", systemImage: "arrowshape.turn.up.left")
                             }
-
+                            // DM option - only show if sender has DM token and it's an incoming message
+                            if isIncoming, let sender = sender, sender.dmToken != 0 {
+                                Button {
+                                    onDM?(sender.codename, sender.dmToken, sender.pubkey)
+                                } label: {
+                                    Label("Send DM", systemImage: "message")
+                                }
+                            }
+                            
                             Button {
                                 UIPasteboard.general.setValue(
                                     stripParagraphTags(text),
@@ -161,7 +170,7 @@ struct MessageItem: View {
                             } label: {
                                 Text("Copy")
                             }
-                        })
+                        }).id(sender)
                         .onChange(of: selectedFlavor) { newValue in
                             if newValue == .custom {
                                 // Defer until after the context menu dismisses
@@ -171,134 +180,134 @@ struct MessageItem: View {
                                 // Reset selection so it doesn't stay on custom
                                 selectedFlavor = .None
                             }
+                            
+                            CSpacer(isIncoming)
                         }
-
-                    CSpacer(isIncoming)
+                    
+                    // Time
+                    //                HStack{
+                    //                    CSpacer(!isIncoming)
+                    //                    Text(time)
+                    //                        .font(.caption).font(.system(size:1))
+                    //                        .foregroundStyle(.black).opacity(0.5).padding(0)
+                    //                    CSpacer(isIncoming)
+                    //                }
+                    
                 }
-
-                // Time
-                //                HStack{
-                //                    CSpacer(!isIncoming)
-                //                    Text(time)
-                //                        .font(.caption).font(.system(size:1))
-                //                        .foregroundStyle(.black).opacity(0.5).padding(0)
-                //                    CSpacer(isIncoming)
-                //                }
-
+                CSpacer(isIncoming)
+                
             }
-            CSpacer(isIncoming)
-
-        }
-        .sheet(isPresented: $isEmojiSheetPresented) {
-            EmojiKeyboard { emoji in
-                reaction = emoji.isEmpty ? nil : emoji
-                isEmojiSheetPresented = false
+            .sheet(isPresented: $isEmojiSheetPresented) {
+                EmojiKeyboard { emoji in
+                    reaction = emoji.isEmpty ? nil : emoji
+                    isEmojiSheetPresented = false
+                }
             }
-        }
-        .onChange(of: shouldTriggerReply) { _, newValue in
-            if newValue {
-                onReply?()
-                shouldTriggerReply = false
+            .onChange(of: shouldTriggerReply) { _, newValue in
+                if newValue {
+                    onReply?()
+                    shouldTriggerReply = false
+                }
             }
         }
     }
-}
-
-#Preview {
-    ScrollView {
-        VStack(spacing: 0) {  // Add this VStack with spacing: 0
-            MessageItem(
-                text: "<p>Yup here you go</p>",
-                isIncoming: true,
-                repliedTo:
-                    "Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go",
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
-                reactionsSet: ["😂", "❤️", "👍"],
-                myReactions: ["😂", "🔥"]
-            )
-            MessageItem(
-                text: """
+    
+    #Preview {
+        ScrollView {
+            VStack(spacing: 0) {  // Add this VStack with spacing: 0
+                MessageItem(
+                    text: "<p>Yup here you go</p>",
+                    isIncoming: true,
+                    repliedTo:
+                        "Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go Wow lets go",
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur", dmToken: 0),
+                    reactionsSet: ["😂", "❤️", "👍"],
+                    myReactions: ["😂", "🔥"]
+                )
+                MessageItem(
+                    text: """
                 <a href="https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free" rel="noopener noreferrer" target="_blank">
                 https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free
                 </a>
                 """,
-                isIncoming: true,
-                repliedTo: "Wow lets go",
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
-                reactionsSet: ["😭", "😂"],
-                myReactions: ["💯", "✨", "🙏"]
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: false,
-                repliedTo: """
+                    isIncoming: true,
+                    repliedTo: "Wow lets go",
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur", dmToken: 0),
+                    reactionsSet: ["😭", "😂"],
+                    myReactions: ["💯", "✨", "🙏"]
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: false,
+                    repliedTo: """
                 Wow lets go <a href="https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free" rel="noopener noreferrer" target="_blank">
                 https://www.theguardian.com/technology/2025/sep/28/why-i-gave-the-world-wide-web-away-for-free
                 </a>
                 """,
-                sender: nil,
-                reactionsSet: ["👏", "🔥"],
-                myReactions: ["😎"]
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
-                reactionsSet: ["❤️"],
-                myReactions: []
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur"),
-                reactionsSet: [],
-                myReactions: ["👍", "😂"]
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: nil
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: nil
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: nil
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: nil
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
-            )
-            MessageItem(
-                text: "Yup here you go",
-                isIncoming: true,
-                repliedTo: nil,
-                sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
-            )
-            Spacer()
-        }  // Close VStack
-    }.padding()
+                    sender: nil,
+                    reactionsSet: ["👏", "🔥"],
+                    myReactions: ["😎"]
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur", dmToken: 0),
+                    reactionsSet: ["❤️"],
+                    myReactions: []
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur", dmToken: 0),
+                    reactionsSet: [],
+                    myReactions: ["👍", "😂"]
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: nil
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: nil
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: nil
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: nil
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
+                )
+                MessageItem(
+                    text: "Yup here you go",
+                    isIncoming: true,
+                    repliedTo: nil,
+                    sender: Sender(id: "1", pubkey: Data(), codename: "Mayur")
+                )
+                Spacer()
+            }  // Close VStack
+        }.padding()
+    }
 }

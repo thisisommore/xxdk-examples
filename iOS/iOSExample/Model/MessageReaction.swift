@@ -3,7 +3,7 @@ import SwiftData
 
 @Model
 class MessageReaction {
-    var id: String
+    @Attribute(.unique) var id: String
     var targetMessageId: String
     var emoji: String
     var timestamp: Date

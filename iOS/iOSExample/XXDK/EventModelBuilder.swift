@@ -39,9 +39,11 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
     
     func update(fromMessageID messageID: Data?, messageUpdateInfoJSON: Data?, ret0_: UnsafeMutablePointer<Int64>?) throws {
+        log("updateFromMessageID - messageID \(short(messageID)) | messageUpdateInfoJSON \(messageUpdateInfoJSON)")
     }
     
     func update(fromUUID uuid: Int64, messageUpdateInfoJSON: Data?) throws {
+        log("updateFromUUID - uuid \(uuid) | messageUpdateInfoJSON \(messageUpdateInfoJSON)")
     }
 
     // MARK: - Helpers
@@ -69,7 +71,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     // Persist a message into SwiftData if modelContext is set
-    private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, senderCodename: String?, senderPubKey: Data?, messageIdB64: String? = nil, replyTo: String? = nil, timestamp: Int64) -> Int64 {
+    private func persistIncomingMessageIfPossible(channelId: String, channelName: String, text: String, senderCodename: String?, senderPubKey: Data?, messageIdB64: String? = nil, replyTo: String? = nil, timestamp: Int64, dmToken: Int32? = nil) -> Int64 {
         guard let mainContext = modelContext else {
             fatalError("no modelContext")
         }
@@ -81,15 +83,32 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             do {
                 let chat = try fetchOrCreateChannelChat(channelId: channelId, channelName: channelName, ctx: backgroundContext)
                 
-                // Create Sender object if we have codename and pubkey
+                // Create or update Sender object if we have codename and pubkey
                 var sender: Sender? = nil
                 if let codename = senderCodename, let pubKey = senderPubKey {
-                    sender = Sender(id: pubKey.base64EncodedString(), pubkey: pubKey, codename: codename)
+                    let senderId = pubKey.base64EncodedString()
+                    
+                    // Check if sender already exists and update dmToken
+                    let senderDescriptor = FetchDescriptor<Sender>(
+                        predicate: #Predicate { $0.id == senderId }
+                    )
+                    if let existingSender = try? backgroundContext.fetch(senderDescriptor).first {
+                        // Update existing sender's dmToken
+                        existingSender.dmToken = dmToken ?? 0
+                        sender = existingSender
+                        log("Updated Sender dmToken for \(codename): \(dmToken ?? 0)")
+                    } else {
+                        // Create new sender
+                        sender = Sender(id: senderId, pubkey: pubKey, codename: codename, dmToken: dmToken ?? 0)
+                        backgroundContext.insert(sender!)
+                        log("Created new Sender for \(codename) with dmToken: \(dmToken ?? 0)")
+                    }
                 }
-                
+                try backgroundContext.save()
                 let msg: ChatMessage
                 if let mid = messageIdB64, !mid.isEmpty {
                     log("ChatMessage(message: \(text), isIncoming: \(true), chat: \(chat), sender: \(senderCodename ?? "nil"), id: \(mid))")
+                    log("Sender(codename: \(sender!.codename), dmToken: \(sender!.dmToken))")
                     msg = ChatMessage(message: text, isIncoming: true, chat: chat, sender: sender, id: mid, replyTo: replyTo, timestamp: timestamp)
                 } else {
                     fatalError("no message id")
@@ -98,7 +117,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 try backgroundContext.save()
                 return Int64(msg.persistentModelID.hashValue)
             } catch {
-                fatalError("EventModel: Failed to save message: \(error)")
+                fatalError("EventModel: Failed to save message: \(error.localizedDescription)")
             }
 
     }
@@ -128,7 +147,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             let nick = identity.codename
             if let decodedText = decodeMessage(messageTextB64) {
                 // Persist into SwiftData chat if available
-                return persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedText, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64, timestamp: timestamp)
+                return persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedText, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64, timestamp: timestamp, dmToken: dmToken)
             }
             return 0
         } catch {
@@ -159,10 +178,25 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             do {
 
             
-                // Create Sender object if we have codename and pubkey
+                // Create or update Sender object if we have codename and pubkey
                 var sender: Sender? = nil
                 if let pubKey = pubKey {
-                    sender = Sender(id: pubKey.base64EncodedString(), pubkey: pubKey, codename: nick)
+                    let senderId = pubKey.base64EncodedString()
+                    
+                    // Check if sender already exists and update dmToken
+                    let senderDescriptor = FetchDescriptor<Sender>(
+                        predicate: #Predicate { $0.id == senderId }
+                    )
+                    if let existingSender = try? ctx.fetch(senderDescriptor).first {
+                        // Update existing sender's dmToken (nil for reactions since dmToken not provided)
+                        existingSender.dmToken = 0
+                        sender = existingSender
+                        log("Updated Sender dmToken for \(nick): nil (reaction)")
+                    } else {
+                        // Create new sender
+                        sender = Sender(id: senderId, pubkey: pubKey, codename: nick, dmToken: 0)
+                        log("Created new Sender for \(nick) with dmToken: nil (reaction)")
+                    }
                 }
                 
                 let record = MessageReaction(id: messageID!.base64EncodedString(), targetMessageId: targetId, emoji: reactionText, sender: sender)
@@ -171,7 +205,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 log("MessageReaction(id: \(messageID!.base64EncodedString()), targetMessageId: \(targetId), emoji: \(reactionText), sender: \(sender))")
                 return Int64(record.persistentModelID.hashValue)
             } catch {
-                fatalError("failed to store message reaction \(error)")
+                fatalError("failed to store message reaction \(error.localizedDescription)")
             }
         
         
@@ -224,7 +258,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             fatalError("reactionTo is missing")
         }
         if let decodedReply = decodeMessage(replyTextB64) {
-            return persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedReply, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64, replyTo: reactionTo.base64EncodedString(), timestamp: timestamp)
+            return persistIncomingMessageIfPossible(channelId: channelIdB64, channelName: "Channel \(String(channelIdB64.prefix(8)))", text: decodedReply, senderCodename: nick, senderPubKey: pubKey, messageIdB64: messageIdB64, replyTo: reactionTo.base64EncodedString(), timestamp: timestamp, dmToken: dmToken)
         }
         return 0
     }
@@ -332,6 +366,6 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     func muteUser(_ channelID: Data?, pubkey: Data?, unmute: Bool) {
-        // no-op
+        log("muteUser - channelID \(short(channelID)) | pubkey \(short(pubkey)) | unmute \(unmute)")
     }
 }

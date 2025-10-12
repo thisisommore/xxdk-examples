@@ -20,7 +20,8 @@ struct iOS_ExampleApp: App {
             Chat.self,
             ChatMessage.self,
             Item.self,
-            MessageReaction.self
+            MessageReaction.self,
+            Sender.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema)
 

@@ -36,25 +36,26 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     private var msgCnt: Int64 = 0
     func eventUpdate(_ eventType: Int64, jsonData: Data?) {
-
+        print("[DMReceiver] eventUpdate called with eventType: \(eventType), jsonData: \(jsonData?.count ?? 0) bytes")
     }
         
     func deleteMessage(_ messageID: Data?, senderPubKey: Data?) -> Bool {
-       
+        print("[DMReceiver] deleteMessage called with messageID: \(messageID?.count ?? 0) bytes, senderPubKey: \(senderPubKey?.count ?? 0) bytes")
         return true
     }
     
     func getConversation(_ senderPubKey: Data?) -> Data? {
-        
+        print("[DMReceiver] getConversation called with senderPubKey: \(senderPubKey?.count ?? 0) bytes")
         return "".data
     }
     
     func getConversations() -> Data? {
-       
+        print("[DMReceiver] getConversations called")
         return "[]".data
     }
     
     func receive(_ messageID: Data?, nickname: String?, text: Data?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, mType: Int64, status: Int64) -> Int64 {
+        print("[DMReceiver] receive called with nickname: \(nickname ?? "nil"), text: \(text?.count ?? 0) bytes, dmToken: \(dmToken), timestamp: \(timestamp), roundId: \(roundId)")
         // Ensure UI updates happen on main thread
         
         guard let messageID else { fatalError("no msg id") }
@@ -68,6 +69,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveReaction(_ messageID: Data?, reactionTo: Data?, nickname: String?, reaction: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
+        print("[DMReceiver] receiveReaction called with nickname: \(nickname ?? "nil"), reaction: \(reaction ?? "nil"), dmToken: \(dmToken), timestamp: \(timestamp)")
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -75,6 +77,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveReply(_ messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
+        print("[DMReceiver] receiveReply called with nickname: \(nickname ?? "nil"), text: \(text ?? "nil"), dmToken: \(dmToken), timestamp: \(timestamp)")
         guard let messageID else { fatalError("no msg id") }
         persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         msgCnt += 1;
@@ -82,6 +85,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func receiveText(_ messageID: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
+        print("[DMReceiver] receiveText called with nickname: \(nickname ?? "nil"), text: \(text ?? "nil"), dmToken: \(dmToken), timestamp: \(timestamp)")
         guard let messageID else { fatalError("no msg id") }
         persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         msgCnt += 1;
@@ -89,7 +93,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     func updateSentStatus(_ uuid: Int64, messageID: Data?, timestamp: Int64, roundID: Int64, status: Int64) {
-       
+        print("[DMReceiver] updateSentStatus called with uuid: \(uuid), messageID: \(messageID?.count ?? 0) bytes, timestamp: \(timestamp), roundID: \(roundID), status: \(status)")
     }
     
     // MARK: - Persistence Helpers
@@ -124,8 +128,22 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                     let chat = try fetchOrCreateDMChat(codename: name, ctx: backgroundContext, pubKey: partnerKey, dmToken: dmToken)
                     print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: true, chat: \(chat.id), id: \(messageId.base64EncodedString()))")
                     
-                    // Create Sender object
-                    let sender = Sender(id: partnerKey.base64EncodedString(), pubkey: partnerKey, codename: name)
+                    // Create or update Sender object
+                    let senderId = partnerKey.base64EncodedString()
+                    let senderDescriptor = FetchDescriptor<Sender>(
+                        predicate: #Predicate { $0.id == senderId }
+                    )
+                    let sender: Sender
+                    if let existingSender = try? backgroundContext.fetch(senderDescriptor).first {
+                        // Update existing sender's dmToken
+                        existingSender.dmToken = dmToken
+                        sender = existingSender
+                        print("DMReceiver: Updated Sender dmToken for \(name): \(dmToken)")
+                    } else {
+                        // Create new sender
+                        sender = Sender(id: senderId, pubkey: partnerKey, codename: name, dmToken: dmToken)
+                        print("DMReceiver: Created new Sender for \(name) with dmToken: \(dmToken)")
+                    }
                     let msg = ChatMessage(message: message, isIncoming: true, chat: chat, sender: sender, id: messageId.base64EncodedString())
                     chat.messages.append(msg)
                     try backgroundContext.save()

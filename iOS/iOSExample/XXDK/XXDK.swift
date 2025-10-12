@@ -725,7 +725,6 @@ public class XXDK: XXDKP {
             }
         } catch let error {
             print("ERROR: Unable to send: " + error.localizedDescription)
-            fatalError("Unable to send: " + error.localizedDescription)
         }
     }
 
@@ -1158,6 +1157,5 @@ public class XXDK: XXDKP {
         }
         
         print("Successfully left channel: \(channelId)")
-    }
-
+    }    
 }

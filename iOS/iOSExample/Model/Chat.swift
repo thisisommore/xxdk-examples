@@ -26,7 +26,7 @@ class User {
 @Model
 class Chat {
     // For channels, this is the channel ID. For DMs, this is the pub key.
-    var id: String
+    @Attribute(.unique) var id: String
     // Human-readable name (channel name or partner codename)
     var name: String
     // Channel description
@@ -58,7 +58,7 @@ class Chat {
 
 @Model
 class ChatMessage: Identifiable {
-    var id: String
+    @Attribute(.unique) var id: String
     var message: String
     var timestamp: Date
     var isIncoming: Bool

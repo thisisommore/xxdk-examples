@@ -27,8 +27,22 @@ struct ChatView<T: XXDKP>: View {
     @State var abc: String = ""
     @State private var replyingTo: ChatMessage? = nil
     @State private var showChannelOptions: Bool = false
+    @State private var navigateToDMChat: Chat? = nil
     @EnvironmentObject var xxdk: T
+    func createDMChatAndNavigate(codename: String, dmToken: Int32, pubKey: Data) {
+        // Create a new DM chat
+        let dmChat = Chat(pubKey: pubKey, name: codename, dmToken: dmToken)
 
+        do {
+            modelContext.insert(dmChat)
+            try modelContext.save()
+
+            // Navigate to the new chat using the created chat object
+            navigateToDMChat = dmChat
+        } catch {
+            print("Failed to create DM chat: \(error)")
+        }
+    }
     init(width: CGFloat, chatId: String, chatTitle: String) {
         self.width = width
         self.chatId = chatId
@@ -48,6 +62,8 @@ struct ChatView<T: XXDKP>: View {
                             ForEach(messages, id: \.id) { result in
                                 ChatMessageRow(result: result, onReply: { message in
                                     replyingTo = message
+                                }, onDM: { codename, dmToken, pubKey in
+                                    createDMChatAndNavigate(codename: codename, dmToken: dmToken,pubKey : pubKey)
                                 })
                                 if result == messages.last {
                                     HStack {}.padding(.vertical, 20)
@@ -114,8 +130,11 @@ struct ChatView<T: XXDKP>: View {
                 }
                 .environmentObject(xxdk)
             }
+            .navigationDestination(item: $navigateToDMChat) { dmChat in
+                ChatView<XXDK>(width: width, chatId: dmChat.id, chatTitle: dmChat.name)
+            }
 
-
+       
     }
 }
 

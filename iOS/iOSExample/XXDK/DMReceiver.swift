@@ -24,15 +24,15 @@ struct ReceivedMessage: Identifiable {
 
 
 class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtocol, Bindings.BindingsDmCallbacksProtocol {
-    // Optional SwiftData context injected from SwiftUI
-    public var modelContext: ModelContext?
+    // Optional SwiftData container injected from SwiftUI
+    public var modelContainer: ModelContainer?
 
     override init() {
         super.init()
     }
 
-    init(modelContext: ModelContext?) {
-        self.modelContext = modelContext
+    init(modelContainer: ModelContainer?) {
+        self.modelContainer = modelContainer
     }
     private var msgCnt: Int64 = 0
     func eventUpdate(_ eventType: Int64, jsonData: Data?) {
@@ -137,17 +137,20 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     
     // MARK: - Persistence Helpers
     private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data, ctx: ModelContext? = nil) {
-        let contextToUse = ctx ?? modelContext
+        let contextToUse = ctx ?? (modelContainer != nil ? ModelContext(modelContainer!) : nil)
         guard let contextToUse else { return }
-        
+
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
         Task { @MainActor in
             do {
                 let chat = try fetchOrCreateDMChat(codename: name, ctx: contextToUse, pubKey: nil, dmToken: nil)
-                let msg = ChatMessage(message: message, isIncoming: true, chat: chat, id: messageId.base64EncodedString())
+
+                // Check if sender's pubkey matches the pubkey of chat with id "<self>"
+                let isIncoming = !isSenderSelf(chat: chat, senderPubKey: nil, ctx: contextToUse)
+                let msg = ChatMessage(message: message, isIncoming: isIncoming, chat: chat, id: messageId.base64EncodedString())
                 chat.messages.append(msg)
                 try contextToUse.save()
-                print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: true, chat: \(chat.id), id: \(messageId.base64EncodedString()))")
+                print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: \(isIncoming), chat: \(chat.id), id: \(messageId.base64EncodedString()))")
             } catch {
                 print("DMReceiver: Failed to save incoming message for \(name): \(error)")
             }
@@ -155,18 +158,18 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
 
     private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data) {
-        guard let ctx = modelContext else { return }
+        guard let container = modelContainer else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
-        
+
         // Create a new background context for this operation
-        let backgroundContext = ModelContext(ctx.container)
-        
+        let backgroundContext = ModelContext(container)
+
         Task { @MainActor in
             do {
                 if let partnerKey {
                     let chat = try fetchOrCreateDMChat(codename: name, ctx: backgroundContext, pubKey: partnerKey, dmToken: dmToken)
-                    print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: true, chat: \(chat.id), id: \(messageId.base64EncodedString()))")
-                    
+                    print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: \(chat.name != "<self>"), chat: \(chat.id), id: \(messageId.base64EncodedString()))")
+
                     // Create or update Sender object
                     let senderId = partnerKey.base64EncodedString()
                     let senderDescriptor = FetchDescriptor<Sender>(
@@ -183,7 +186,10 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                         sender = Sender(id: senderId, pubkey: partnerKey, codename: name, dmToken: dmToken)
                         print("DMReceiver: Created new Sender for \(name) with dmToken: \(dmToken)")
                     }
-                    let msg = ChatMessage(message: message, isIncoming: true, chat: chat, sender: sender, id: messageId.base64EncodedString())
+
+                    // Check if sender's pubkey matches the pubkey of chat with id "<self>"
+                    let isIncoming = !isSenderSelf(chat: chat, senderPubKey: partnerKey, ctx: backgroundContext)
+                    let msg = ChatMessage(message: message, isIncoming: isIncoming, chat: chat, sender: sender, id: messageId.base64EncodedString())
                     chat.messages.append(msg)
                     try backgroundContext.save()
                 } else {
@@ -218,6 +224,18 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                 throw MyError.runtimeError("pubkey is required to create chat")
             }
         }
+    }
+
+    // MARK: - Helper Methods
+    private func isSenderSelf(chat: Chat, senderPubKey: Data?, ctx: ModelContext) -> Bool {
+        // Check if there's a chat with id "<self>" and compare its pubkey with sender's pubkey
+        let selfChatDescriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.name == "<self>" })
+        if let selfChat = try? ctx.fetch(selfChatDescriptor).first {
+            guard let senderPubKey = senderPubKey else { return false }
+            return Data(base64Encoded: selfChat.id) == senderPubKey
+        }
+
+        return false
     }
     
 }

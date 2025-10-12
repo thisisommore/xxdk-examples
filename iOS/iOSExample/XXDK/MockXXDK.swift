@@ -10,9 +10,9 @@ import Bindings
 import SwiftData
 
 public class XXDKMock: XXDKP {
-    public func setModelContext(_ ctx: ModelContext) {
+    public func setModelContainer(_ container: ModelContainer) {
         // No-op for mock
-        dmReceiver.modelContext = ctx
+        dmReceiver.modelContainer = container
     }
     
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32) {

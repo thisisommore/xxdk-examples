@@ -89,18 +89,18 @@ final class ChannelUICallbacks: NSObject, Bindings.BindingsChannelUICallbacksPro
         return short(data)
     }
 
-    init(modelContext: ModelContext? = nil) {
-        self.modelContext = modelContext
+    init(modelContainer: ModelContainer? = nil) {
+        self.modelContainer = modelContainer
         super.init()
-        log("init(modelContext set: \(modelContext != nil))")
+        log("init(modelContainer set: \(modelContainer != nil))")
     }
 
-    public func configure(modelContext: ModelContext) {
-        log("configure(modelContext set: true)")
-        self.modelContext = modelContext
+    public func configure(modelContainer: ModelContainer) {
+        log("configure(modelContainer set: true)")
+        self.modelContainer = modelContainer
     }
 
-    public var modelContext: ModelContext?
+    public var modelContainer: ModelContainer?
 
     private func fetchOrCreateChannelChat(channelId: String, channelName: String, ctx: ModelContext) throws -> Chat {
         log("fetchOrCreateChannelChat channelId=\(channelId) channelName=\(channelName)")

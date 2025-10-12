@@ -70,7 +70,10 @@ class ChatMessage: Identifiable {
         self.message = message
         self.timestamp = Date(timeIntervalSince1970: Double(timestamp) * 1e-6 * 1e-3)
         self.isIncoming = isIncoming
-        self.sender = sender
+        if (sender != nil)
+        {
+            self.sender = sender
+        }
         self.chat = chat
         self.replyTo = replyTo
     }

@@ -22,7 +22,7 @@ struct LandingPage<Model>: View where Model: XXDKP {
                         .transition(.move(edge: .top).combined(with: .opacity))
                         .onAppear {
                             Task {
-                                xxdk.setModelContext(modelContext)
+                                xxdk.setModelContainer(modelContext.container)
                                 await xxdk.load()
                                 await MainActor.run {
                                     isLoadingDone = true

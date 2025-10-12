@@ -50,19 +50,19 @@ public class XXDK: XXDKP {
     // This will not start receiving until the network follower starts
     @Published var dmReceiver = DMReceiver()
     var eventModelBuilder: EventModelBuilder?
-    // Retained SwiftData model context for lifecycle operations
-    private var modelContext: ModelContext?
-    // modelContext for dmReceiver is injected from SwiftUI (e.g., ContentView.onAppear)
+    // Retained SwiftData model container for lifecycle operations
+    private var modelContainer: ModelContainer?
+    // modelContainer for dmReceiver is injected from SwiftUI (e.g., ContentView.onAppear)
 
     // Channel UI callbacks for handling channel events
     private let channelUICallbacks: ChannelUICallbacks
 
-    public func setModelContext(_ ctx: ModelContext) {
-        // Retain context and inject into receivers/callbacks
-        self.modelContext = ctx
-        self.dmReceiver.modelContext = ctx
-        self.channelUICallbacks.configure(modelContext: ctx)
-        self.eventModelBuilder?.configure(modelContext: ctx)
+    public func setModelContainer(_ container: ModelContainer) {
+        // Retain container and inject into receivers/callbacks
+        self.modelContainer = container
+        self.dmReceiver.modelContainer = container
+        self.channelUICallbacks.configure(modelContainer: container)
+        self.eventModelBuilder?.configure(modelContainer: container)
     }
 
     init(url: String, cert: String) {
@@ -101,7 +101,7 @@ public class XXDK: XXDKP {
 
     func load() async {
         // Always start from a clean SwiftData state per request
-        if let container = modelContext?.container {
+        if let container = modelContainer {
             do {
                 //                try container.erase()
                 print("SwiftData: Deleted all local data at startup")
@@ -111,7 +111,7 @@ public class XXDK: XXDKP {
                 )
             }
         } else {
-            print("SwiftData: No modelContext set; skipping deleteAllData()")
+            print("SwiftData: No modelContainer set; skipping deleteAllData()")
         }
 
         let downloadedNdf = downloadNDF(url: self.networkUrl, certFilePath: self.networkCert)
@@ -341,8 +341,8 @@ public class XXDK: XXDKP {
                 }
                
 
-                if let ctx = self.modelContext {
-                    self.eventModelBuilder?.configure(modelContext: ctx)
+                if let container = self.modelContainer {
+                    self.eventModelBuilder?.configure(modelContainer: container)
                 }
 
                 guard
@@ -385,9 +385,9 @@ public class XXDK: XXDKP {
             }
         }
 
-        guard let codename, let DM, let modelContext else {
-            print("ERROR: codename/DM/modelContext not there")
-            fatalError("codename/DM/modelContext not there")
+        guard let codename, let DM, let modelContainer else {
+            print("ERROR: codename/DM/modelContainer not there")
+            fatalError("codename/DM/modelContainer not there")
         }
         // After loading, if we have a codename, ensure a self chat exists
         let name = codename.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -400,22 +400,23 @@ public class XXDK: XXDKP {
             let selfPubKeyB64 = selfPubKeyData.base64EncodedString()
             do {
                 try await MainActor.run {
-                    // Check if a DM chat already exists for this public key (id == pubkey b64)
+                    // Create context from container and check if a DM chat already exists for this public key (id == pubkey b64)
+                    let context = ModelContext(modelContainer)
                     let descriptor = FetchDescriptor<Chat>(
                         predicate: #Predicate { $0.id == selfPubKeyB64 }
                     )
-                    let existing = try modelContext.fetch(descriptor)
+                    let existing = try context.fetch(descriptor)
                     if existing.isEmpty {
                         let token64 = DM.getToken()
                         let tokenU32 = UInt32(truncatingIfNeeded: token64)
                         let selfToken = Int32(bitPattern: tokenU32)
                         let chat = Chat(
                             pubKey: selfPubKeyData,
-                            name: name,
+                            name: "<self>",
                             dmToken: selfToken
                         )
-                        modelContext.insert(chat)
-                        try modelContext.save()
+                        context.insert(chat)
+                        try context.save()
                         print("[XXDK] is ready = true")
                     }
                 }
@@ -430,56 +431,21 @@ public class XXDK: XXDKP {
             let cd = try await joinChannel(XX_GENERAL_CHAT)
             let channelId = cd.channelId ?? "xxGeneralChat"
             try await MainActor.run {
+                let context = ModelContext(modelContainer)
                 let check = FetchDescriptor<Chat>(
                     predicate: #Predicate { $0.id == channelId }
                 )
-                let existingChannel = try modelContext.fetch(check)
+                let existingChannel = try context.fetch(check)
                 if existingChannel.isEmpty {
                     let channelChat = Chat(channelId: channelId, name: cd.name)
-                    modelContext.insert(channelChat)
-                    try modelContext.save()
+                    context.insert(channelChat)
+                    try context.save()
                 }
             }
         } catch {
             print(
                 "HomeView: Failed to ensure initial channel xxGeneralChat: \(error)"
             )
-        }
-    }
-
-    // Persist an outgoing message to SwiftData using the given message ID
-    private func persistOutgoingMessage(
-        chatId: String,
-        defaultName: String,
-        message: String,
-        messageIdB64: String,
-        dmToken: Int32? = nil,
-        replyTo: String? = nil
-    ) {
-        guard let ctx = self.modelContext else {
-            fatalError("persistOutgoingMessage: modelContext not set")
-        }
-        do {
-            let descriptor = FetchDescriptor<Chat>(
-                predicate: #Predicate { $0.id == chatId }
-            )
-            guard let chat = try ctx.fetch(descriptor).first else {
-                fatalError(
-                    "persistOutgoingMessage: Chat not found for id=\(chatId)"
-                )
-            }
-            print("XXDK: ChatMessage(message: \"\(message)\", isIncoming: false, chat: \(chat.id), id: \(messageIdB64), replyTo: \(replyTo ?? "nil"))")
-            let outMsg = ChatMessage(
-                message: message,
-                isIncoming: false,
-                chat: chat,
-                id: messageIdB64,
-                replyTo: replyTo
-            )
-            chat.messages.append(outMsg)
-            try ctx.save()
-        } catch {
-            fatalError("persistOutgoingMessage failed: \(error)")
         }
     }
 
@@ -490,17 +456,18 @@ public class XXDK: XXDKP {
         targetMessageId: String,
         isMe: Bool = true
     ) {
-        guard let ctx = self.modelContext else {
-            print("persistReaction: modelContext not set")
+        guard let container = self.modelContainer else {
+            print("persistReaction: modelContainer not set")
             return
         }
         Task { @MainActor in
             do {
+                let context = ModelContext(container)
                 let reaction = MessageReaction(
                     id: messageIdB64, targetMessageId: targetMessageId, emoji: emoji, isMe: isMe
                 )
-                ctx.insert(reaction)
-                try ctx.save()
+                context.insert(reaction)
+                try context.save()
             } catch {
                 print("persistReaction failed: \(error)")
             }
@@ -534,23 +501,18 @@ public class XXDK: XXDKP {
                     )
                     let chatId = channelId
                     let defaultName: String = {
-                        if let ctx = self.modelContext {
+                        if let container = self.modelContainer {
+                            let context = ModelContext(container)
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? ctx.fetch(descriptor).first {
+                            if let found = try? context.fetch(descriptor).first {
                                 return found.name
                             }
                         }
                         return "Channel \(String(chatId.prefix(8)))"
                     }()
-                    self.persistOutgoingMessage(
-                        chatId: chatId,
-                        defaultName: defaultName,
-                        message: msg,
-                        messageIdB64: mid.base64EncodedString(),
-                        dmToken: nil
-                    )
+                
                 } else {
                     print("Channel sendMessage returned no messageID")
                 }
@@ -593,24 +555,18 @@ public class XXDK: XXDKP {
                     )
                     let chatId = channelId
                     let defaultName: String = {
-                        if let ctx = self.modelContext {
+                        if let container = self.modelContainer {
+                            let context = ModelContext(container)
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? ctx.fetch(descriptor).first {
+                            if let found = try? context.fetch(descriptor).first {
                                 return found.name
                             }
                         }
                         return "Channel \(String(chatId.prefix(8)))"
                     }()
-                    self.persistOutgoingMessage(
-                        chatId: chatId,
-                        defaultName: defaultName,
-                        message: msg,
-                        messageIdB64: mid.base64EncodedString(),
-                        dmToken: nil,
-                        replyTo: replyToMessageIdB64
-                    )
+                    
                 } else {
                     print("Channel sendReply returned no messageID")
                 }
@@ -700,23 +656,18 @@ public class XXDK: XXDKP {
                     print("DM sendText messageID: \(mid.base64EncodedString())")
                     let chatId = toPubKey.base64EncodedString()
                     let defaultName: String = {
-                        if let ctx = self.modelContext {
+                        if let container = self.modelContainer {
+                            let context = ModelContext(container)
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? ctx.fetch(descriptor).first {
+                            if let found = try? context.fetch(descriptor).first {
                                 return found.name
                             }
                         }
                         return "Direct Message"
                     }()
-                     self.persistOutgoingMessage(
-                         chatId: chatId,
-                         defaultName: defaultName,
-                         message: msg,
-                         messageIdB64: mid.base64EncodedString(),
-                         dmToken: partnerToken
-                     )
+                     
                 } else {
                     print("DM sendText returned no messageID")
                 }
@@ -755,24 +706,18 @@ public class XXDK: XXDKP {
                     print("DM sendReply messageID: \(mid.base64EncodedString())")
                     let chatId = toPubKey.base64EncodedString()
                     let defaultName: String = {
-                        if let ctx = self.modelContext {
+                        if let container = self.modelContainer {
+                            let context = ModelContext(container)
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? ctx.fetch(descriptor).first {
+                            if let found = try? context.fetch(descriptor).first {
                                 return found.name
                             }
                         }
                         return "Direct Message"
                     }()
-                    self.persistOutgoingMessage(
-                        chatId: chatId,
-                        defaultName: defaultName,
-                        message: msg,
-                        messageIdB64: mid.base64EncodedString(),
-                        dmToken: partnerToken,
-                        replyTo: replyToMessageIdB64
-                    )
+                   
                 } else {
                     print("DM sendReply returned no messageID")
                 }

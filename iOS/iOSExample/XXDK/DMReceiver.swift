@@ -57,11 +57,24 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     func receive(_ messageID: Data?, nickname: String?, text: Data?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, mType: Int64, status: Int64) -> Int64 {
         print("[DMReceiver] receive called with nickname: \(nickname ?? "nil"), text: \(text?.count ?? 0) bytes, dmToken: \(dmToken), timestamp: \(timestamp), roundId: \(roundId)")
         // Ensure UI updates happen on main thread
-        
+
         guard let messageID else { fatalError("no msg id") }
         guard let text else { fatalError("no text") }
         guard let decodedMessage = decodeMessage(text.base64EncodedString())  else { fatalError("decode failed") }
-        persistIncoming(message: decodedMessage, codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+
+        // Get codename using same approach as EventModelBuilder
+        var err: NSError?
+        let identityData = Bindings.BindingsConstructIdentity(partnerKey, codeset, &err)
+        let codename: String
+        do {
+            let identity = try Parser.decodeIdentity(from: identityData!)
+            codename = identity.codename
+        } catch {
+            // Fallback to provided nickname if identity decoding fails
+            codename = "Unknown"
+        }
+
+        persistIncoming(message: decodedMessage, codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -79,7 +92,20 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     func receiveReply(_ messageID: Data?, reactionTo: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
         print("[DMReceiver] receiveReply called with nickname: \(nickname ?? "nil"), text: \(text ?? "nil"), dmToken: \(dmToken), timestamp: \(timestamp)")
         guard let messageID else { fatalError("no msg id") }
-        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+
+        // Get codename using same approach as EventModelBuilder
+        var err: NSError?
+        let identityData = Bindings.BindingsConstructIdentity(partnerKey, codeset, &err)
+        let codename: String
+        do {
+            let identity = try Parser.decodeIdentity(from: identityData!)
+            codename = identity.codename
+        } catch {
+            // Fallback to provided nickname if identity decoding fails
+            codename = "Unknown"
+        }
+
+        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         msgCnt += 1;
         return msgCnt;
     }
@@ -87,7 +113,20 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     func receiveText(_ messageID: Data?, nickname: String?, text: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, codeset: Int, timestamp: Int64, roundId: Int64, status: Int64) -> Int64 {
         print("[DMReceiver] receiveText called with nickname: \(nickname ?? "nil"), text: \(text ?? "nil"), dmToken: \(dmToken), timestamp: \(timestamp)")
         guard let messageID else { fatalError("no msg id") }
-        persistIncoming(message: text ?? "empty text", codename: nickname, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+
+        // Get codename using same approach as EventModelBuilder
+        var err: NSError?
+        let identityData = Bindings.BindingsConstructIdentity(partnerKey, codeset, &err)
+        let codename: String
+        do {
+            let identity = try Parser.decodeIdentity(from: identityData!)
+            codename = identity.codename
+        } catch {
+            // Fallback to provided nickname if identity decoding fails
+            codename = "Unknown"
+        }
+
+        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
         msgCnt += 1;
         return msgCnt;
     }

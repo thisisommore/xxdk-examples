@@ -134,7 +134,7 @@ struct NewChatView<T:XXDKP>: View {
                     }
                 }
             )
-        }
+        }.id(inviteLink)
             .navigationTitle("Join Channel")
             .navigationBarTitleDisplayMode(.inline)
         }

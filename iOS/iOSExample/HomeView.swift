@@ -56,7 +56,7 @@ struct NewChatView<T:XXDKP>: View {
                 Form {
                 Section(header: Text("Enter invite link")) {
                     TextEditor(text: $inviteLink)
-                        .frame(minHeight: 100, maxHeight: 450)
+                        .frame(minHeight: 100, maxHeight: UIScreen.h(60))
                         .font(.body)
                 }
                     

@@ -40,6 +40,7 @@ struct HomeView<T:XXDKP>: View {
 struct NewChatView<T:XXDKP>: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
+    @State private var showConfirmationSheet: Bool = false
     @EnvironmentObject var xxdk: T
     @State private var inviteLink: String = ""
     @State private var channelData: ChannelJSON?
@@ -90,6 +91,7 @@ struct NewChatView<T:XXDKP>: View {
                         let channel = try xxdk.getChannelFromURL(url: trimmed)
                         print("channel data \(channel)")
                         channelData = channel
+                        showConfirmationSheet = true
                         errorMessage = nil
                     }
                 } catch {
@@ -111,6 +113,7 @@ struct NewChatView<T:XXDKP>: View {
                         prettyPrint = pp
                         let channel = try xxdk.getPrivateChannelFromURL(url: inviteLink, password: password)
                         channelData = channel
+                        showConfirmationSheet = true
                         showPasswordSheet = false
                         errorMessage = nil
                     } catch {
@@ -123,18 +126,18 @@ struct NewChatView<T:XXDKP>: View {
                 }
             )
         }
-        .sheet(item: $channelData) { channel in
+        .sheet(isPresented: $showConfirmationSheet) { [inviteLink, channelData] in
             ChannelConfirmationView(
-                channelName: channel.name,
+                channelName: channelData!.name,
                 channelURL: inviteLink,
                 isJoining: $isJoining,
                 onConfirm: { enableDM in
                     Task {
-                        await joinChannel(url: inviteLink, channelData: channel, enableDM: enableDM)
+                        await joinChannel(url: inviteLink, channelData: channelData!, enableDM: enableDM)
                     }
                 }
             )
-        }.id(inviteLink)
+        }
             .navigationTitle("Join Channel")
             .navigationBarTitleDisplayMode(.inline)
         }

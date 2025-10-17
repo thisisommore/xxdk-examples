@@ -133,7 +133,7 @@ struct NewChatView<T: XXDKP>: View {
             }
             .sheet(isPresented: $showConfirmationSheet) { [inviteLink, channelData] in
                 ChannelConfirmationView(
-                    channelName: channelData!.name,
+                    channelName: channelData?.name ?? "",
                     channelURL: inviteLink,
                     isJoining: $isJoining,
                     onConfirm: { enableDM in

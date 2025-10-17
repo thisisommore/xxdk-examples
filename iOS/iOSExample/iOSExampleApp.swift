@@ -11,7 +11,7 @@ import SwiftUI
 @main
 struct iOS_ExampleApp: App {
     @StateObject var logOutput = LogViewer()
-    @StateObject var xxdk = XXDK(url: MAINNET_URL, cert: MAINNET_CERT)
+    @StateObject var xxdk = XXDK()
 
     var sharedModelContainer: ModelContainer = {
         // Include all SwiftData models used by the app

@@ -11,10 +11,8 @@ import SwiftData
 
 
  protocol XXDKP: ObservableObject, AnyObject {
-    var ndf: Data? { get set }
     var DM: Bindings.BindingsDMClient? { get set }
     var dmReceiver: DMReceiver { get set }
-    var codename: String? {get set}
     var cmix: Bindings.BindingsCmix? {get set}
     func load() async
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32)

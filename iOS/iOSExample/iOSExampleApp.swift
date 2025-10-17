@@ -13,12 +13,11 @@ struct iOS_ExampleApp: App {
     @StateObject var logOutput = LogViewer()
     @StateObject var xxdk = XXDK()
 
-    var sharedModelContainer: ModelContainer = {
+    var modelContainer: ModelContainer = {
         // Include all SwiftData models used by the app
         let schema = Schema([
             Chat.self,
             ChatMessage.self,
-            Item.self,
             MessageReaction.self,
             Sender.self,
         ])
@@ -37,7 +36,8 @@ struct iOS_ExampleApp: App {
             LandingPage<XXDK>()
                 .environmentObject(logOutput)
                 .environmentObject(xxdk)
+                .environmentObject(SwiftDataActor(modelContainer: modelContainer))
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(modelContainer)
     }
 }

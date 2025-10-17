@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @ModelActor
-public actor SwiftDataActor {
+public actor SwiftDataActor: ObservableObject {
     // MARK: - Actor Methods (Async)
     
     private func insert_<T: PersistentModel>(_ m: T) {

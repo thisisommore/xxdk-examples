@@ -6,7 +6,7 @@ struct HomeView<T: XXDKP>: View {
     @Query private var chats: [Chat]
     @EnvironmentObject var xxdk: T
     @State private var didStartLoad = false
-    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var swiftDataActor: SwiftDataActor
 
     var width: CGFloat
 
@@ -39,7 +39,7 @@ struct HomeView<T: XXDKP>: View {
 
 struct NewChatView<T: XXDKP>: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.modelContext) var modelContext
+    @EnvironmentObject var swiftDataActor: SwiftDataActor
     @State private var showConfirmationSheet: Bool = false
     @EnvironmentObject var xxdk: T
     @State private var inviteLink: String = ""
@@ -181,8 +181,8 @@ struct NewChatView<T: XXDKP>: View {
             }
 
             let newChat = Chat(channelId: channelId, name: joinedChannel.name)
-            modelContext.insert(newChat)
-            try modelContext.save()
+            swiftDataActor.insert(newChat)
+            try swiftDataActor.save()
 
             print("Chat saved to database: \(newChat.name)")
 

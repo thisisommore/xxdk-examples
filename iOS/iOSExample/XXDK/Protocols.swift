@@ -11,6 +11,8 @@ import SwiftData
 
 
  protocol XXDKP: ObservableObject, AnyObject {
+    var status: String {get};
+    var statusPercentage: Double {get};
     var DM: Bindings.BindingsDMClient? { get set }
     var dmReceiver: DMReceiver { get set }
     var cmix: Bindings.BindingsCmix? {get set}

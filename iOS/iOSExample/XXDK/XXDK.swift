@@ -28,6 +28,9 @@ enum MyError: Error {
 }
 
 public class XXDK: XXDKP {
+    @Published var status: String = "..."
+    @Published var statusPercentage: Double = 0;
+    private var isNewUser: Bool = false;
     // Channels Manager retained for channel sends
     private var channelsManager: Bindings.BindingsChannelsManager?
     private var stateDir: URL
@@ -79,6 +82,7 @@ public class XXDK: XXDKP {
                     at: stateDir,
                     withIntermediateDirectories: true
                 )
+                isNewUser = true
             }
             stateDir = stateDir.appendingPathComponent("ekv")
         } catch let err {
@@ -101,10 +105,21 @@ public class XXDK: XXDKP {
             )
         }
 
+        // UX: Friendly staged progress
+        await MainActor.run {
+            self.status = "Preparing secure storage"
+            self.statusPercentage = 10
+        }
+
         let downloadedNdf = downloadNDF(
             url: MAINNET_URL,
             certFilePath: MAINNET_CERT
         )
+
+        await MainActor.run {
+            self.status = "Fetching network map"
+            self.statusPercentage = 25
+        }
 
         // NOTE: Secret should be pulled from keychain
         let secret = "Hello".data
@@ -147,6 +162,11 @@ public class XXDK: XXDKP {
         guard let cmix else {
             print("ERROR: cmix is not available")
             fatalError("cmix is not available")
+        }
+
+        await MainActor.run {
+            self.status = "Initializing cMix core"
+            self.statusPercentage = 45
         }
 
         let receptionID = cmix.getReceptionID()?.base64EncodedString()
@@ -225,6 +245,11 @@ public class XXDK: XXDKP {
             }
         }
 
+        await MainActor.run {
+            self.status = "Creating your identity"
+            self.statusPercentage = 55
+        }
+
         let notifications = Bindings.BindingsLoadNotifications(
             cmix.getID(),
             &err
@@ -237,6 +262,11 @@ public class XXDK: XXDKP {
             fatalError(
                 "could not load notifications: " + err.localizedDescription
             )
+        }
+
+        await MainActor.run {
+            self.status = "Syncing notifications"
+            self.statusPercentage = 60
         }
 
         let receiverBuilder = DMReceiverBuilder(receiver: dmReceiver)
@@ -262,6 +292,11 @@ public class XXDK: XXDKP {
             fatalError("could not load dm client: " + err.localizedDescription)
         }
 
+        await MainActor.run {
+            self.status = "Starting network follower"
+            self.statusPercentage = 70
+        }
+
         print(
             "DMPUBKEY: \(DM?.getPublicKey()?.base64EncodedString() ?? "empty pubkey")"
         )
@@ -275,7 +310,18 @@ public class XXDK: XXDKP {
             fatalError("cannot start network: " + error.localizedDescription)
         }
 
+        await MainActor.run {
+            self.status = "Connecting to nodes"
+            self.statusPercentage = 75
+        }
+
         remoteKV = cmix.getRemoteKV()
+
+        // Update status: setting up remote KV
+        await MainActor.run {
+            self.status = "Setting up remote KV"
+            self.statusPercentage = 80
+        }
 
         let storageTagListener: RemoteKVKeyChangeListener
         // Start RemoteKV listener for the storage tag during load so it's ready before channel join
@@ -289,6 +335,11 @@ public class XXDK: XXDKP {
         } catch {
             print("ERROR: failed to set storageTagListener \(error)")
             fatalError("failed to set storageTagListener \(error)")
+        }
+
+        await MainActor.run {
+            self.status = "Waiting for network to be ready"
+            self.statusPercentage = 85
         }
 
         self.storageTagListener = storageTagListener
@@ -310,6 +361,11 @@ public class XXDK: XXDKP {
                 let cmixId = cmix.getID()
                 // Attempt to create Channels Manager on the MainActor
                 var err: NSError?
+
+                await MainActor.run {
+                    self.status = "Preparing channels manager"
+                    self.statusPercentage = 86
+                }
 
                 guard
                     let noti = Bindings.BindingsLoadNotificationsDummy(
@@ -356,6 +412,14 @@ public class XXDK: XXDKP {
                 await MainActor.run {
                     self.channelsManager = cm
                     storageTagListener.data = Data(cm.getStorageTag().utf8)
+                }
+
+                if (!isNewUser) {return}
+                isNewUser = false
+                // Update status: joining channels
+                await MainActor.run {
+                    self.status = "Joining channels"
+                    self.statusPercentage = 90
                 }
 
                 if let e = err {
@@ -444,6 +508,11 @@ public class XXDK: XXDKP {
             print(
                 "HomeView: Failed to ensure initial channel xxGeneralChat: \(error)"
             )
+        }
+
+        // Finalize status: ready
+        await MainActor.run {
+            self.statusPercentage = 100
         }
     }
 

@@ -102,6 +102,14 @@ public actor SwiftDataActor: ObservableObject {
     }
 }
 
+// Public convenience initializer for previews/tests that forwards to the
+// synthesized @ModelActor initializer without shadowing it.
+extension SwiftDataActor {
+    public nonisolated init(previewModelContainer container: ModelContainer) {
+        self.init(modelContainer: container)
+    }
+}
+
 // MARK: - Usage Examples
 /*
  
@@ -126,3 +134,4 @@ public actor SwiftDataActor: ObservableObject {
  actor.delete_(message)
  
  */
+

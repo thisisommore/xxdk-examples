@@ -16,18 +16,22 @@ struct LandingPage<T>: View where T: XXDKP {
                 }
 
                 if showProgress && !isLoadingDone {
-                    ProgressView()
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .onAppear {
-                            Task {
-                                xxdk.setModelContainer(mActor: swiftDataActor)
-                                await xxdk.load()
-                                await MainActor.run {
-                                    isLoadingDone = true
-                                    navigationPath.append(Destination.home)
+                    HStack {
+                        ProgressView(value: xxdk.statusPercentage, total: 100).tint(.gray)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .onAppear {
+                                Task {
+                                    xxdk.setModelContainer(mActor: swiftDataActor)
+                                    await xxdk.load()
+                                    await MainActor.run {
+                                        isLoadingDone = true
+                                        navigationPath.append(Destination.home)
+                                    }
                                 }
                             }
-                        }
+                    }.frame(width: 120)
+                   
+                    Text(xxdk.status).font(.system(size: 12)).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -69,5 +73,7 @@ struct LandingPage<T>: View where T: XXDKP {
     ["Tom", "Mayur", "Shashank"].forEach { name in
         container.mainContext.insert(Chat(pubKey: name.data, name: name, dmToken: 0))
     }
-    return LandingPage<XXDKMock>().environmentObject(XXDKMock()).modelContainer(container)
+    let actor = SwiftDataActor(previewModelContainer: container)
+    return LandingPage<XXDKMock>().environmentObject(XXDKMock()).environmentObject(actor).modelContainer(container)
 }
+

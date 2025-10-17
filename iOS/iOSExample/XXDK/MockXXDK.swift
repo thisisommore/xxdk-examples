@@ -8,8 +8,10 @@
 import Kronos
 import Bindings
 import SwiftData
-
+import SwiftUI
 public class XXDKMock: XXDKP {
+    @Published var status: String = "Initiating";
+    @Published var statusPercentage: Double = 10;
     public func setModelContainer(mActor: SwiftDataActor) {
         // Retain container and inject into receivers/callbacks
     
@@ -103,7 +105,30 @@ public class XXDKMock: XXDKP {
         do {
             print("starting wait")
             try await Task.sleep(nanoseconds: 2_000_000_000) // Reduced to 2 seconds for testing
-            print("wait done")
+            withAnimation {
+                statusPercentage = 20
+                status = "Connecting to network"
+            }
+            
+           
+            try await Task.sleep(nanoseconds: 2_000_000_000) // Reduced to 2 seconds for testing
+            withAnimation {
+                statusPercentage = 40
+                status = "Joining xxNetwork channel"
+            }
+            
+            try await Task.sleep(nanoseconds: 2_000_000_000) // Reduced to 2 seconds for testing
+            withAnimation {
+                statusPercentage = 60
+                status = "Setting up KV"
+            }
+           
+            try await Task.sleep(nanoseconds: 2_000_000_000) // Reduced to 2 seconds for testing
+            withAnimation {
+                statusPercentage = 100
+                print("wait done")
+            }
+            
         } catch {
             fatalError("error in load fake sleep: \(error)")
         }

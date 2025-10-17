@@ -14,9 +14,9 @@
             filePath = "iOSExample/XXDK/XXDK.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "664"
-            endingLineNumber = "664"
-            landmarkName = "sendDM(msg:toPubKey:partnerToken:)"
+            startingLineNumber = "670"
+            endingLineNumber = "670"
+            landmarkName = "sendReaction(emoji:toMessageIdB64:inChannelId:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

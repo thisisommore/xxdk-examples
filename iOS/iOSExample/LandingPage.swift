@@ -3,10 +3,8 @@ import SwiftData
 struct LandingPage<T>: View where T: XXDKP {
     @State private var moveUp: Bool = false
     @State private var showProgress: Bool = false
-    @State private var goToMax: Bool = false // ⬅️ added
     @EnvironmentObject var xxdk: T
     @Environment(\.modelContext) private var modelContext
-    private let html: String = "<h1>XXNetwork</h1> <p>Haven App.</p>"
     @State private var navigationPath = NavigationPath()
     @State private var isLoadingDone = false
     var body: some View {

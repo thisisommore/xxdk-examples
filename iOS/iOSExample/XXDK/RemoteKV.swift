@@ -18,7 +18,6 @@ final class RemoteKVKeyChangeListener: NSObject, Bindings.BindingsKeyChangedByRe
 
     // Convenience initializer that starts listening immediately
     init(key: String, remoteKV: Bindings.BindingsRemoteKV, version: Int64 = 0, localEvents: Bool = true) throws {
-        log.debug("are we there")
         self.key = key
         self.data = nil
         super.init()

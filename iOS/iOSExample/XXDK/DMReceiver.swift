@@ -25,15 +25,8 @@ struct ReceivedMessage: Identifiable {
 
 class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtocol, Bindings.BindingsDmCallbacksProtocol {
     // Optional SwiftData container injected from SwiftUI
-    public var modelContainer: ModelContainer?
-
-    override init() {
-        super.init()
-    }
-
-    init(modelContainer: ModelContainer?) {
-        self.modelContainer = modelContainer
-    }
+//    public var modelContainer: ModelContainer?
+    public var modelActor: SwiftDataActor?
     private var msgCnt: Int64 = 0
     func eventUpdate(_ eventType: Int64, jsonData: Data?) {
         print("[DMReceiver] eventUpdate called with eventType: \(eventType), jsonData: \(jsonData?.count ?? 0) bytes")
@@ -136,8 +129,8 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     // MARK: - Persistence Helpers
-    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data, ctx: ModelContext? = nil) {
-        let contextToUse = ctx ?? (modelContainer != nil ? ModelContext(modelContainer!) : nil)
+    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data, ctx: SwiftDataActor? = nil) {
+        let contextToUse = ctx ?? modelActor
         guard let contextToUse else { return }
 
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
@@ -158,11 +151,8 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
 
     private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data) {
-        guard let container = modelContainer else { return }
+        guard let backgroundContext = modelActor else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
-
-        // Create a new background context for this operation
-        let backgroundContext = ModelContext(container)
 
         Task { @MainActor in
             do {
@@ -202,7 +192,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         }
     }
 
-    private func fetchOrCreateDMChat(codename: String, ctx: ModelContext, pubKey: Data?, dmToken: Int32?) throws -> Chat {
+    private func fetchOrCreateDMChat(codename: String, ctx: SwiftDataActor, pubKey: Data?, dmToken: Int32?) throws -> Chat {
         if let pubKey {
             let pubKeyB64 = pubKey.base64EncodedString()
             let byKey = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == pubKeyB64 })
@@ -227,7 +217,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
 
     // MARK: - Helper Methods
-    private func isSenderSelf(chat: Chat, senderPubKey: Data?, ctx: ModelContext) -> Bool {
+    private func isSenderSelf(chat: Chat, senderPubKey: Data?, ctx: SwiftDataActor) -> Bool {
         // Check if there's a chat with id "<self>" and compare its pubkey with sender's pubkey
         let selfChatDescriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.name == "<self>" })
         if let selfChat = try? ctx.fetch(selfChatDescriptor).first {

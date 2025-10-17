@@ -2,17 +2,19 @@ import Bindings
 import Foundation
 import SwiftData
 
+import Dispatch
 final class EventModelBuilder: NSObject, BindingsEventModelBuilderProtocol {
     private var r: EventModel
 
     // Optional SwiftData container for the built EventModel
     public var modelContainer: ModelContainer?
+    public var modelActor: SwiftDataActor?
 
     // Allow late injection from the app so the EventModel can persist messages
-    public func configure(modelContainer: ModelContainer) {
-        self.modelContainer = modelContainer
+    public func configure(modelActor: SwiftDataActor) {
+        self.modelActor = modelActor
         // Propagate immediately to the underlying model if already created
-        r.configure(modelContainer: modelContainer)
+        r.configure(modelActor: modelActor)
     }
 
     init(model: EventModel) {
@@ -21,9 +23,9 @@ final class EventModelBuilder: NSObject, BindingsEventModelBuilderProtocol {
     }
 
     func build(_ path: String?) -> (any BindingsEventModelProtocol)? {
-        // If a modelContainer has been configured on the builder, ensure the model gets it
-        if let container = modelContainer, r.modelContainer == nil {
-            r.configure(modelContainer: container)
+        // If a modelActor has been configured on the builder, ensure the model gets it
+        if let actor = modelActor, r.modelActor == nil {
+            r.configure(modelActor: actor)
         }
         return r
     }
@@ -31,11 +33,11 @@ final class EventModelBuilder: NSObject, BindingsEventModelBuilderProtocol {
 
 final class EventModel: NSObject, BindingsEventModelProtocol {
     // Optional SwiftData container for persisting chats/messages
-    public var modelContainer: ModelContainer?
 
+    var modelActor: SwiftDataActor?
     // Allow late injection of the model container without changing initializer signature
-    public func configure(modelContainer: ModelContainer) {
-        self.modelContainer = modelContainer
+    public func configure(modelActor: SwiftDataActor) {
+        self.modelActor = modelActor
     }
 
     func update(
@@ -68,20 +70,21 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     // Fetch existing Chat by channelId or create a new one
     private func fetchOrCreateChannelChat(
         channelId: String,
-        channelName: String,
-        mCoin: ModelContainer
+        channelName: String
     ) throws -> Chat {
+        guard let actor = modelActor else {
+            throw NSError(domain: "EventModel", code: 500, userInfo: [NSLocalizedDescriptionKey: "modelActor not available"])
+        }
         let descriptor = FetchDescriptor<Chat>(
             predicate: #Predicate { $0.id == channelId }
         )
-        let ctx = ModelContext(mCoin)
-        if let existing = try ctx.fetch(descriptor).first {
+        if let existing = try actor.fetch(descriptor).first {
             return existing
         }
         log("Chat(channelId: \(channelId), name: \(channelName))")
         let newChat = Chat(channelId: channelId, name: channelName)
-        ctx.insert(newChat)
-        try ctx.save()
+        actor.insert(newChat)
+        try actor.save()
         return newChat
     }
 
@@ -97,16 +100,15 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         timestamp: Int64,
         dmToken: Int32? = nil
     ) -> Int64 {
-        guard let container = modelContainer else {
-            fatalError("no modelContainer")
-        }
+        
 
         do {
-            let context = ModelContext(container)
+            guard let actor = modelActor else {
+                fatalError("no modelActor")
+            }
             let chat = try fetchOrCreateChannelChat(
                 channelId: channelId,
-                channelName: channelName,
-                mCoin: container
+                channelName: channelName
             )
 
             // Create or update Sender object if we have codename and pubkey
@@ -118,13 +120,14 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 let senderDescriptor = FetchDescriptor<Sender>(
                     predicate: #Predicate { $0.id == senderId }
                 )
-                if let existingSender = try? context.fetch(
+                if let existingSender = try? actor.fetch(
                     senderDescriptor
                 ).first {
+                    log("text=\(text) sender= id=\(existingSender.id) codename=\(existingSender.codename) dmToken=\(existingSender.dmToken)")
                     // Update existing sender's dmToken
                     existingSender.dmToken = dmToken ?? 0
                     sender = existingSender
-                    try context.save()
+                    try modelActor?.save()
                     log(
                         "Updated Sender dmToken for \(codename): \(dmToken ?? 0)"
                     )
@@ -136,17 +139,19 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                         codename: codename,
                         dmToken: dmToken ?? 0
                     )
+                    actor.insert(sender!)
+                    try modelActor?.save()
                     log(
                         "Created new Sender for \(codename) with dmToken: \(dmToken ?? 0)"
                     )
                 }
             }
-            try context.insert(sender!)
-            try context.save()
+            
+            
             let msg: ChatMessage
             if let mid = messageIdB64, !mid.isEmpty {
                 // Check if sender's pubkey matches the pubkey of chat with id "<self>"
-                let isIncoming = !isSenderSelf(chat: chat, senderPubKey: senderPubKey, ctx: context)
+                let isIncoming = !isSenderSelf(chat: chat, senderPubKey: senderPubKey, ctx: actor)
                 log(
                     "ChatMessage(message: \(text), isIncoming: \(isIncoming), chat: \(chat.name), sender: \(sender!.codename), id: \(mid))"
                 )
@@ -162,14 +167,18 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                     replyTo: replyTo,
                     timestamp: timestamp
                 )
-                context.insert(msg)
+                
+             
+                    modelActor?.insert(msg)
+                 
+          
+              
             } else {
                 fatalError("no message id")
             }
             
-            try context.save()
             chat.messages.append(msg)
-            try context.save()
+            try modelActor?.save()
             return Int64(msg.persistentModelID.hashValue)
         } catch {
             print(error)
@@ -263,14 +272,23 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             "[EventReceived] new | \(messageID?.base64EncodedString() ?? "nil") | \(reactionTo?.base64EncodedString() ?? "nil") | \(reaction ?? "")"
         )
 
-        let nick = nickname ?? ""
         let reactionText = reaction ?? ""
         let targetMessageIdB64 = reactionTo?.base64EncodedString()
 
-        // Validate inputs
-        guard let container = modelContainer else {
-            fatalError("no model container")
+        // Get codename using same approach as EventModelBuilder
+        var err: NSError?
+        let identityData = Bindings.BindingsConstructIdentity(pubKey, codeset, &err)
+        let codename: String
+        do {
+            let identity = try Parser.decodeIdentity(from: identityData!)
+            codename = identity.codename
+        } catch {
+            // Fallback to provided nickname if identity decoding fails
+            codename = nickname ?? "Unknown"
         }
+
+        // Validate inputs
+
         guard let targetId = targetMessageIdB64, !targetId.isEmpty else {
             fatalError("no target id")
         }
@@ -279,7 +297,9 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         }
 
         do {
-            let context = ModelContext(container)
+            guard let actor = modelActor else {
+                fatalError("no modelActor")
+            }
 
             // Create or update Sender object if we have codename and pubkey
             var sender: Sender? = nil
@@ -290,21 +310,21 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 let senderDescriptor = FetchDescriptor<Sender>(
                     predicate: #Predicate { $0.id == senderId }
                 )
-                if let existingSender = try? context.fetch(senderDescriptor).first {
-                    // Update existing sender's dmToken (nil for reactions since dmToken not provided)
-                    existingSender.dmToken = 0
+                if let existingSender = try? actor.fetch(senderDescriptor).first {
+                    // Update existing sender's dmToken
+                    existingSender.dmToken = dmToken
                     sender = existingSender
-                    log("Updated Sender dmToken for \(nick): nil (reaction)")
+                    log("Updated Sender dmToken for \(codename): \(dmToken)")
                 } else {
                     // Create new sender
                     sender = Sender(
                         id: senderId,
                         pubkey: pubKey,
-                        codename: nick,
-                        dmToken: 0
+                        codename: codename,
+                        dmToken: dmToken
                     )
                     log(
-                        "Created new Sender for \(nick) with dmToken: nil (reaction)"
+                        "Created new Sender for \(codename) with dmToken: \(dmToken)"
                     )
                 }
             }
@@ -315,8 +335,8 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 emoji: reactionText,
                 sender: sender
             )
-            context.insert(record)
-            try context.save()
+            actor.insert(record)
+            try actor.save()
             log(
                 "MessageReaction(id: \(messageID!.base64EncodedString()), targetMessageId: \(targetId), emoji: \(reactionText), sender: \(sender))"
             )
@@ -331,26 +351,26 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
 
     func deleteReaction(messageId: String, emoji: String) {
         log("[EventReceived] delete | \(messageId) | | \(emoji)")
-        guard let container = modelContainer else {
-            log("deleteReaction: no modelContainer available")
-            return
-        }
+
 
         do {
-            let context = ModelContext(container)
+            guard let actor = modelActor else {
+                log("deleteReaction: no modelActor available")
+                return
+            }
             let descriptor = FetchDescriptor<MessageReaction>(
                 predicate: #Predicate {
                     $0.id == messageId && $0.emoji == emoji
                 }
             )
-            let reactions = try context.fetch(descriptor)
+            let reactions = try actor.fetch(descriptor)
 
             for reaction in reactions {
-                context.delete(reaction)
+                actor.delete(reaction)
                 log("Deleted reaction: \(emoji) from message \(messageId)")
             }
 
-            try context.save()
+            try actor.save()
         } catch {
             print("EventModel: Failed to delete reaction: \(error)")
         }
@@ -446,17 +466,15 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         let messageIdB64 = messageID.base64EncodedString()
         log("[EventReceived] get | \(messageIdB64) | | ")
 
-        guard let container = modelContainer else {
-            throw NSError(domain: "EventModel", code: 500)
+        guard let actor = modelActor else {
+            throw NSError(domain: "EventModel", code: 500, userInfo: [NSLocalizedDescriptionKey: "modelActor not available"])
         }
-
-        let context = ModelContext(container)
 
         // Check ChatMessage
         let msgDescriptor = FetchDescriptor<ChatMessage>(
             predicate: #Predicate { $0.id == messageIdB64 }
         )
-        if let msg = try? context.fetch(msgDescriptor).first {
+        if let msg = try? actor.fetch(msgDescriptor).first {
             let pubKeyData = msg.sender?.pubkey ?? Data()
             let modelMsg = ModelMessageJSON(
                 pubKey: pubKeyData,
@@ -469,7 +487,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         let reactionDescriptor = FetchDescriptor<MessageReaction>(
             predicate: #Predicate { $0.id == messageIdB64 }
         )
-        if let reaction = try? context.fetch(reactionDescriptor).first {
+        if let reaction = try? actor.fetch(reactionDescriptor).first {
             let pubKeyData = reaction.sender?.pubkey ?? Data()
             let modelMsg = ModelMessageJSON(
                 pubKey: pubKeyData,
@@ -493,27 +511,25 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         let messageIdB64 = messageID.base64EncodedString()
         log("[EventReceived] delete | \(messageIdB64) | | ")
 
-        guard let container = modelContainer else {
-            fatalError("deleteMessage: no modelContainer available")
+        guard let actor = modelActor else {
+            fatalError("deleteMessage: no modelActor available")
         }
-
-        let context = ModelContext(container)
 
         do {
             // First, try to find and delete a ChatMessage
             let messageDescriptor = FetchDescriptor<ChatMessage>(
                 predicate: #Predicate { $0.id == messageIdB64 }
             )
-            let messages = try context.fetch(messageDescriptor)
+            let messages = try actor.fetch(messageDescriptor)
 
             if !messages.isEmpty {
                 for message in messages {
                     log(
                         "deleteMessage: Deleting ChatMessage with id=\(messageIdB64)"
                     )
-                    context.delete(message)
+                    actor.delete(message)
                 }
-                try context.save()
+                try actor.save()
                 log("deleteMessage: ChatMessage deleted successfully")
                 return
             }
@@ -525,16 +541,16 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             let reactionDescriptor = FetchDescriptor<MessageReaction>(
                 predicate: #Predicate { $0.id == messageIdB64 }
             )
-            let reactions = try context.fetch(reactionDescriptor)
+            let reactions = try actor.fetch(reactionDescriptor)
 
             if !reactions.isEmpty {
                 for reaction in reactions {
                     log(
                         "deleteMessage: Deleting MessageReaction with messageId=\(messageIdB64), emoji=\(reaction.emoji)"
                     )
-                    context.delete(reaction)
+                    actor.delete(reaction)
                 }
-                try context.save()
+                try actor.save()
                 log("deleteMessage: MessageReaction(s) deleted successfully")
                 return
             }
@@ -557,7 +573,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
     }
 
     // MARK: - Helper Methods
-    private func isSenderSelf(chat: Chat, senderPubKey: Data?, ctx: ModelContext) -> Bool {
+    private func isSenderSelf(chat: Chat, senderPubKey: Data?, ctx: SwiftDataActor) -> Bool {
         // Check if there's a chat with id "<self>" and compare its pubkey with sender's pubkey
         let selfChatDescriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.name == "<self>" })
         if let selfChat = try? ctx.fetch(selfChatDescriptor).first {

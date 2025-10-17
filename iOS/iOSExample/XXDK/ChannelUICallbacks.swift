@@ -40,6 +40,9 @@ enum ChannelEvent: Int64, CustomStringConvertible {
 
 final class ChannelUICallbacks: NSObject, Bindings.BindingsChannelUICallbacksProtocol {
 
+    // MARK: - Properties
+    public var modelActor: SwiftDataActor?
+
     // MARK: - Debug Logging
     private let logPrefix = "[ChannelUICallbacks]"
     private func log(_ message: String) {
@@ -89,20 +92,19 @@ final class ChannelUICallbacks: NSObject, Bindings.BindingsChannelUICallbacksPro
         return short(data)
     }
 
-    init(modelContainer: ModelContainer? = nil) {
-        self.modelContainer = modelContainer
+    override init() {
         super.init()
-        log("init(modelContainer set: \(modelContainer != nil))")
+        log("init()")
     }
 
-    public func configure(modelContainer: ModelContainer) {
-        log("configure(modelContainer set: true)")
-        self.modelContainer = modelContainer
+    public func configure(modelActor: SwiftDataActor? = nil) {
+        log("configure(modelActor set: \(modelActor != nil))")
+        self.modelActor = modelActor
     }
 
     public var modelContainer: ModelContainer?
 
-    private func fetchOrCreateChannelChat(channelId: String, channelName: String, ctx: ModelContext) throws -> Chat {
+    private func fetchOrCreateChannelChat(channelId: String, channelName: String, ctx: SwiftDataActor) throws -> Chat {
         log("fetchOrCreateChannelChat channelId=\(channelId) channelName=\(channelName)")
         let descriptor = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == channelId })
         if let existing = try ctx.fetch(descriptor).first {

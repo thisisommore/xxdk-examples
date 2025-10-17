@@ -10,9 +10,13 @@ import Bindings
 import SwiftData
 
 public class XXDKMock: XXDKP {
-    public func setModelContainer(_ container: ModelContainer) {
-        // No-op for mock
-        dmReceiver.modelContainer = container
+    public func setModelContainer(mActor: SwiftDataActor) {
+        // Retain container and inject into receivers/callbacks
+    
+        self.dmReceiver.modelActor = mActor
+        self.channelUICallbacks.configure(modelActor: mActor)
+        self.eventModelBuilder = EventModelBuilder(model: EventModel(storageTag: "mock-storage-tag"))
+        self.eventModelBuilder?.configure(modelActor: mActor)
     }
     
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32) {
@@ -106,7 +110,17 @@ public class XXDKMock: XXDKP {
         
     }
     var cmix: Bindings.BindingsCmix?
-    init() {}
+    var channelsManager: Bindings.BindingsChannelsManager?
+    var eventModelBuilder: EventModelBuilder?
+    var remoteKV: Bindings.BindingsRemoteKV?
+    var storageTagListener: RemoteKVKeyChangeListener?
+    private var modelContainer: ModelContainer?
+    private let channelUICallbacks: ChannelUICallbacks
+
+    init() {
+        self.channelUICallbacks = ChannelUICallbacks()
+    }
+
     var ndf: Data?
     var DM: Bindings.BindingsDMClient?
     var dmReceiver: DMReceiver = DMReceiver()

@@ -5,8 +5,8 @@
 //  Created by Richard Carback on 2/29/24.
 //
 
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
     @State private var SendMessageTextInput: String = ""
@@ -38,34 +38,55 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
             .border(.primary)
             HStack(alignment: .bottom) {
-                TextField ("Enter Message to Send",
-                           text: $SendMessageTextInput)
-                .onKeyPress(.return, action: {
+                TextField(
+                    "Enter Message to Send",
+                    text: $SendMessageTextInput
+                )
+                .onKeyPress(
+                    .return,
+                    action: {
                         guard xxdk.cmix?.readyToSend() == true else {
                             return KeyPress.Result.handled
                         }
-                        if let key = xxdk.DM?.getPublicKey() { xxdk.sendDM(msg: SendMessageTextInput, toPubKey: key, partnerToken: Int32(xxdk.DM?.getToken() ?? 0)) }
+                        if let key = xxdk.DM?.getPublicKey() {
+                            xxdk.sendDM(
+                                msg: SendMessageTextInput, toPubKey: key,
+                                partnerToken: Int32(xxdk.DM?.getToken() ?? 0))
+                        }
                         SendMessageTextInput = ""
                         return KeyPress.Result.handled
-                })
+                    }
+                )
                 .textFieldStyle(.roundedBorder)
-                Button(action: {
-                    guard xxdk.cmix?.readyToSend() == true else { return }
-                    if let key = xxdk.DM?.getPublicKey() { xxdk.sendDM(msg: SendMessageTextInput, toPubKey: key, partnerToken: Int32(xxdk.DM?.getToken() ?? 0)) }
-                    SendMessageTextInput = ""
-                }, label: {
+                Button(
+                    action: {
+                        guard xxdk.cmix?.readyToSend() == true else { return }
+                        if let key = xxdk.DM?.getPublicKey() {
+                            xxdk.sendDM(
+                                msg: SendMessageTextInput, toPubKey: key,
+                                partnerToken: Int32(xxdk.DM?.getToken() ?? 0))
+                        }
+                        SendMessageTextInput = ""
+                    },
+                    label: {
                         Text("Send")
-                }).alert(isPresented: $showAlert, content: {Alert(title: Text("The network is getting ready, please try again shortly."))})
+                    }
+                ).alert(
+                    isPresented: $showAlert,
+                    content: {
+                        Alert(
+                            title: Text("The network is getting ready, please try again shortly."))
+                    }
+                )
                 .buttonStyle(.borderedProminent)
             }.padding()
         }.padding()
-        .onAppear(perform: {
-            // Inject SwiftData model context so DMReceiver can persist across all chats
-            xxdk.setModelContext(modelContext)
-            Task {
-                await xxdk.load()
-            }
-        })
+            .onAppear(perform: {
+                // SwiftDataActor is now injected via LandingPage.swift and passed to XXDK
+                Task {
+                    await xxdk.load()
+                }
+            })
     }
 }
 

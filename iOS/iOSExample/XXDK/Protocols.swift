@@ -16,7 +16,6 @@ import SwiftData
     var dmReceiver: DMReceiver { get set }
     var codename: String? {get set}
     var cmix: Bindings.BindingsCmix? {get set}
-    func setModelContainer(_ container: ModelContainer)
     func load() async
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32)
     func sendDM(msg: String, channelId: String)
@@ -32,6 +31,7 @@ import SwiftData
     func disableDirectMessages(channelId: String) throws
     func areDMsEnabled(channelId: String) throws -> Bool
     func leaveChannel(channelId: String) throws
+    func setModelContainer(mActor: SwiftDataActor)
 }
 // These are common helpers extending the string class which are essential for working with XXDK
 extension StringProtocol {

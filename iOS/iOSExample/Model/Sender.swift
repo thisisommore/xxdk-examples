@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @Model
-class Sender {
+class Sender: Encodable {
     @Attribute(.unique) var id: String
     var pubkey: Data
     //codename
@@ -14,6 +14,18 @@ class Sender {
         self.pubkey = pubkey
         self.codename = codename
         self.dmToken = dmToken
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, pubkey, codename, dmToken
+    }
+    
+    func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id);
+        try c.encode(pubkey, forKey: .pubkey);
+        try c.encode(dmToken, forKey: .dmToken)
+        try c.encode(codename, forKey: .codename)
     }
 }
 

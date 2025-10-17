@@ -51,18 +51,21 @@ public class XXDK: XXDKP {
     @Published var dmReceiver = DMReceiver()
     var eventModelBuilder: EventModelBuilder?
     // Retained SwiftData model container for lifecycle operations
-    private var modelContainer: ModelContainer?
-    // modelContainer for dmReceiver is injected from SwiftUI (e.g., ContentView.onAppear)
+
+    private var modelActor: SwiftDataActor?
+    // modelContainer and modelActor for receivers/callbacks are injected from SwiftUI (e.g., ContentView.onAppear)
 
     // Channel UI callbacks for handling channel events
     private let channelUICallbacks: ChannelUICallbacks
 
-    public func setModelContainer(_ container: ModelContainer) {
-        // Retain container and inject into receivers/callbacks
-        self.modelContainer = container
-        self.dmReceiver.modelContainer = container
-        self.channelUICallbacks.configure(modelContainer: container)
-        self.eventModelBuilder?.configure(modelContainer: container)
+    public func setModelContainer(mActor: SwiftDataActor) {
+        // Retain container and actor for lifecycle operations
+
+        self.modelActor = mActor
+        // Inject into receivers/callbacks
+        self.dmReceiver.modelActor = mActor
+        self.channelUICallbacks.configure(modelActor: mActor)
+        self.eventModelBuilder?.configure(modelActor: mActor)
     }
 
     init(url: String, cert: String) {
@@ -101,7 +104,7 @@ public class XXDK: XXDKP {
 
     func load() async {
         // Always start from a clean SwiftData state per request
-        if let container = modelContainer {
+    
             do {
                 //                try container.erase()
                 print("SwiftData: Deleted all local data at startup")
@@ -110,9 +113,7 @@ public class XXDK: XXDKP {
                     "SwiftData: Failed to delete all data at startup: \(error)"
                 )
             }
-        } else {
-            print("SwiftData: No modelContainer set; skipping deleteAllData()")
-        }
+      
 
         let downloadedNdf = downloadNDF(url: self.networkUrl, certFilePath: self.networkCert)
         await MainActor.run {
@@ -341,8 +342,8 @@ public class XXDK: XXDKP {
                 }
                
 
-                if let container = self.modelContainer {
-                    self.eventModelBuilder?.configure(modelContainer: container)
+                if let actor = self.modelActor {
+                    self.eventModelBuilder?.configure(modelActor: actor)
                 }
 
                 guard
@@ -385,7 +386,7 @@ public class XXDK: XXDKP {
             }
         }
 
-        guard let codename, let DM, let modelContainer else {
+        guard let codename, let DM else {
             print("ERROR: codename/DM/modelContainer not there")
             fatalError("codename/DM/modelContainer not there")
         }
@@ -400,12 +401,15 @@ public class XXDK: XXDKP {
             let selfPubKeyB64 = selfPubKeyData.base64EncodedString()
             do {
                 try await MainActor.run {
-                    // Create context from container and check if a DM chat already exists for this public key (id == pubkey b64)
-                    let context = ModelContext(modelContainer)
+                    // Check if a DM chat already exists for this public key (id == pubkey b64) using SwiftDataActor
+                    guard let actor = self.modelActor else {
+                        print("ERROR: modelActor not available")
+                        return
+                    }
                     let descriptor = FetchDescriptor<Chat>(
                         predicate: #Predicate { $0.id == selfPubKeyB64 }
                     )
-                    let existing = try context.fetch(descriptor)
+                    let existing = try actor.fetch(descriptor)
                     if existing.isEmpty {
                         let token64 = DM.getToken()
                         let tokenU32 = UInt32(truncatingIfNeeded: token64)
@@ -415,8 +419,8 @@ public class XXDK: XXDKP {
                             name: "<self>",
                             dmToken: selfToken
                         )
-                        context.insert(chat)
-                        try context.save()
+                        actor.insert(chat)
+                        try actor.save()
                         print("[XXDK] is ready = true")
                     }
                 }
@@ -431,15 +435,19 @@ public class XXDK: XXDKP {
             let cd = try await joinChannel(XX_GENERAL_CHAT)
             let channelId = cd.channelId ?? "xxGeneralChat"
             try await MainActor.run {
-                let context = ModelContext(modelContainer)
+                // Check if channel chat exists using SwiftDataActor
+                guard let actor = self.modelActor else {
+                    print("ERROR: modelActor not available")
+                    return
+                }
                 let check = FetchDescriptor<Chat>(
                     predicate: #Predicate { $0.id == channelId }
                 )
-                let existingChannel = try context.fetch(check)
+                let existingChannel = try actor.fetch(check)
                 if existingChannel.isEmpty {
                     let channelChat = Chat(channelId: channelId, name: cd.name)
-                    context.insert(channelChat)
-                    try context.save()
+                    actor.insert(channelChat)
+                    try actor.save()
                 }
             }
         } catch {
@@ -456,18 +464,18 @@ public class XXDK: XXDKP {
         targetMessageId: String,
         isMe: Bool = true
     ) {
-        guard let container = self.modelContainer else {
-            print("persistReaction: modelContainer not set")
+        guard let actor = self.modelActor else {
+            print("persistReaction: modelActor not set")
             return
         }
         Task { @MainActor in
             do {
-                let context = ModelContext(container)
+                // Use SwiftDataActor instead of ModelContext
                 let reaction = MessageReaction(
                     id: messageIdB64, targetMessageId: targetMessageId, emoji: emoji, isMe: isMe
                 )
-                context.insert(reaction)
-                try context.save()
+                actor.insert(reaction)
+                try actor.save()
             } catch {
                 print("persistReaction failed: \(error)")
             }
@@ -501,12 +509,11 @@ public class XXDK: XXDKP {
                     )
                     let chatId = channelId
                     let defaultName: String = {
-                        if let container = self.modelContainer {
-                            let context = ModelContext(container)
+                        if let actor = self.modelActor {
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? context.fetch(descriptor).first {
+                            if let found = try? actor.fetch(descriptor).first {
                                 return found.name
                             }
                         }
@@ -555,12 +562,11 @@ public class XXDK: XXDKP {
                     )
                     let chatId = channelId
                     let defaultName: String = {
-                        if let container = self.modelContainer {
-                            let context = ModelContext(container)
+                        if let actor = self.modelActor {
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? context.fetch(descriptor).first {
+                            if let found = try? actor.fetch(descriptor).first {
                                 return found.name
                             }
                         }
@@ -656,12 +662,11 @@ public class XXDK: XXDKP {
                     print("DM sendText messageID: \(mid.base64EncodedString())")
                     let chatId = toPubKey.base64EncodedString()
                     let defaultName: String = {
-                        if let container = self.modelContainer {
-                            let context = ModelContext(container)
+                        if let actor = self.modelActor {
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? context.fetch(descriptor).first {
+                            if let found = try? actor.fetch(descriptor).first {
                                 return found.name
                             }
                         }
@@ -706,12 +711,11 @@ public class XXDK: XXDKP {
                     print("DM sendReply messageID: \(mid.base64EncodedString())")
                     let chatId = toPubKey.base64EncodedString()
                     let defaultName: String = {
-                        if let container = self.modelContainer {
-                            let context = ModelContext(container)
+                        if let actor = self.modelActor {
                             let descriptor = FetchDescriptor<Chat>(
                                 predicate: #Predicate { $0.id == chatId }
                             )
-                            if let found = try? context.fetch(descriptor).first {
+                            if let found = try? actor.fetch(descriptor).first {
                                 return found.name
                             }
                         }

@@ -105,21 +105,7 @@ public class XXDK: XXDKP {
             )
         }
 
-        // UX: Friendly staged progress
-        await MainActor.run {
-            self.status = "Preparing secure storage"
-            self.statusPercentage = 10
-        }
-
-        let downloadedNdf = downloadNDF(
-            url: MAINNET_URL,
-            certFilePath: MAINNET_CERT
-        )
-
-        await MainActor.run {
-            self.status = "Fetching network map"
-            self.statusPercentage = 25
-        }
+ 
 
         // Get secret from Keychain
         guard let sm else {
@@ -129,6 +115,21 @@ public class XXDK: XXDKP {
         // NOTE: Empty string forces defaults, these are settable but it is recommended that you use the defaults.
         let cmixParamsJSON = "".data
         if !FileManager.default.fileExists(atPath: stateDir.path) {
+            // UX: Friendly staged progress
+            await MainActor.run {
+                self.status = "Downloading NDF"
+                self.statusPercentage = 10
+            }
+
+            let downloadedNdf = downloadNDF(
+                url: MAINNET_URL,
+                certFilePath: MAINNET_CERT
+            )
+
+            await MainActor.run {
+                self.status = "Setting up cMixx"
+                self.statusPercentage = 25
+            }
             var err: NSError?
             Bindings.BindingsNewCmix(
                 downloadedNdf.utf8,
@@ -146,6 +147,12 @@ public class XXDK: XXDKP {
                     "could not create new Cmix: " + err.localizedDescription
                 )
             }
+        }
+        
+        
+        await MainActor.run {
+            self.status = "Loading cMixx"
+            self.statusPercentage = 32
         }
         var err: NSError?
         let loadedCmix = Bindings.BindingsLoadCmix(
@@ -168,7 +175,7 @@ public class XXDK: XXDKP {
         }
 
         await MainActor.run {
-            self.status = "Initializing cMix core"
+            self.status = "Loading identity"
             self.statusPercentage = 45
         }
 

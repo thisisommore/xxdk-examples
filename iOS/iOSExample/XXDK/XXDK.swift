@@ -182,21 +182,21 @@ public class XXDK: XXDKP {
         let receptionID = cmix.getReceptionID()?.base64EncodedString()
         print("cMix Reception ID: \(receptionID ?? "<nil value>")")
 
-        let dmID: Data
+        let privateIdentity: Data
         do {
-            dmID = try cmix.ekvGet("MyDMID")
+            privateIdentity = try cmix.ekvGet("MyPrivateIdentity")
         } catch {
             print("Generating DM Identity...")
             // NOTE: This will be deprecated in favor of generateCodenameIdentity(...)
-            let _dmID = Bindings.BindingsGenerateChannelIdentity(
+            let _privateIdentity = Bindings.BindingsGenerateChannelIdentity(
                 cmix.getID(),
                 &err
             )
-            if _dmID == nil {
+            if _privateIdentity == nil {
                 print("ERROR: dmId is nil")
                 fatalError("dmId is nil")
             }
-            dmID = _dmID!
+            privateIdentity = _privateIdentity!
             if let err {
                 print(
                     "ERROR: could not generate codename id: "
@@ -207,20 +207,20 @@ public class XXDK: XXDKP {
                         + err.localizedDescription
                 )
             }
-            print("Exported Codename Blob: " + dmID.base64EncodedString())
+            print("Exported Codename Blob: " + privateIdentity.base64EncodedString())
             do {
-                try cmix.ekvSet("MyDMID", value: dmID)
+                try cmix.ekvSet("MyPrivateIdentity", value: privateIdentity)
             } catch let error {
                 print("ERROR: could not set ekv: " + error.localizedDescription)
                 fatalError("could not set ekv: " + error.localizedDescription)
             }
         }
-        print("Exported Codename Blob: " + dmID.base64EncodedString())
+        print("Exported Codename Blob: " + privateIdentity.base64EncodedString())
 
         // Derive public identity JSON from the private identity and decode codename
         let publicIdentity: Data?
         publicIdentity = Bindings.BindingsGetPublicChannelIdentityFromPrivate(
-            dmID,
+            privateIdentity,
             &err
         )
         if let err {
@@ -289,7 +289,7 @@ public class XXDK: XXDKP {
         let dmClient = Bindings.BindingsNewDMClient(
             cmix.getID(),
             (notifications?.getID())!,
-            dmID,
+            privateIdentity,
             receiverBuilder,
             dmReceiver,
             &err
@@ -406,7 +406,7 @@ public class XXDK: XXDKP {
                 guard
                     let cm = Bindings.BindingsNewChannelsManager(
                         cmix.getID(),
-                        dmID,
+                        privateIdentity,
                         eventModelBuilder,
                         nil,
                         noti.getID(),

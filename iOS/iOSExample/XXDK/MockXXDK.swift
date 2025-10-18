@@ -12,7 +12,7 @@ import SwiftUI
 public class XXDKMock: XXDKP {
     @Published var status: String = "Initiating";
     @Published var statusPercentage: Double = 10;
-    public func setModelContainer(mActor: SwiftDataActor) {
+    public func setModelContainer(mActor: SwiftDataActor, sm: SecretManager) {
         // Retain container and inject into receivers/callbacks
     
         self.dmReceiver.modelActor = mActor

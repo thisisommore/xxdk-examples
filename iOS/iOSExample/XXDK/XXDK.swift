@@ -49,10 +49,10 @@ public class XXDK: XXDKP {
 
     // Channel UI callbacks for handling channel events
     private let channelUICallbacks: ChannelUICallbacks
-
-    public func setModelContainer(mActor: SwiftDataActor) {
+    private var sm: SecretManager?
+    public func setModelContainer(mActor: SwiftDataActor, sm: SecretManager) {
         // Retain container and actor for lifecycle operations
-
+        self.sm = sm
         self.modelActor = mActor
         // Inject into receivers/callbacks
         self.dmReceiver.modelActor = mActor
@@ -121,8 +121,11 @@ public class XXDK: XXDKP {
             self.statusPercentage = 25
         }
 
-        // NOTE: Secret should be pulled from keychain
-        let secret = "Hello".data
+        // Get secret from Keychain
+        guard let sm else {
+            fatalError("no secret manager")
+        }
+        let secret = try! sm.getPassword().data
         // NOTE: Empty string forces defaults, these are settable but it is recommended that you use the defaults.
         let cmixParamsJSON = "".data
         if !FileManager.default.fileExists(atPath: stateDir.path) {

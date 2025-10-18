@@ -5,6 +5,7 @@ struct LandingPage<T>: View where T: XXDKP {
     @State private var showProgress: Bool = false
     @EnvironmentObject var xxdk: T
     @EnvironmentObject private var swiftDataActor: SwiftDataActor
+    @EnvironmentObject private var sm: SecretManager
     @State private var navigationPath = NavigationPath()
     @State private var isLoadingDone = false
     var body: some View {
@@ -21,7 +22,7 @@ struct LandingPage<T>: View where T: XXDKP {
                             .transition(.move(edge: .top).combined(with: .opacity))
                             .onAppear {
                                 Task {
-                                    xxdk.setModelContainer(mActor: swiftDataActor)
+                                    xxdk.setModelContainer(mActor: swiftDataActor, sm: sm)
                                     await xxdk.load()
                                     await MainActor.run {
                                         isLoadingDone = true

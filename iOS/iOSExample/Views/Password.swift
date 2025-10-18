@@ -1,15 +1,22 @@
 import SwiftUI
 
+
+
 @MainActor
 public struct PasswordCreationView: View {
+
     @State private var password: String = ""
     @State private var confirm: String = ""
     @State private var attemptedSubmit: Bool = false
     @FocusState private var focusedField: Field?
     @State private var showImportSheet: Bool = false
     @State private var importPassword: String = ""
+    @EnvironmentObject var sm: SecretManager
+    var onPasswordCreated: () -> Void
 
-    public init() {}
+    public init(onPasswordCreated: @escaping () -> Void) {
+        self.onPasswordCreated = onPasswordCreated
+    }
 
     // MARK: - Focus
     private enum Field { case password, confirm }
@@ -17,7 +24,7 @@ public struct PasswordCreationView: View {
     // MARK: - Rules
     private enum PasswordRule: CaseIterable {
         case length, upper, lower, digit, symbol
-
+       
         var label: String {
             switch self {
             case .length: return "At least 8 characters"
@@ -164,7 +171,12 @@ public struct PasswordCreationView: View {
     private func handleSubmit() {
         attemptedSubmit = true
         guard canContinue else { return }
-        // onSubmit(password)
+        
+        // Save password to Keychain
+        try! sm.storePassword(password)
+       
+            onPasswordCreated()
+
     }
 
     // MARK: - Helpers
@@ -357,11 +369,18 @@ private struct ImportAccountSheet: View {
     }
     
     private func handleImport() {
+        let account = "self"
+        let password = "credentials.password.data(using: String.Encoding.utf8)!"
+        var query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrAccount as String: account,
+                                    kSecValueData as String: password]
+        let status = SecItemAdd(query as CFDictionary, nil)
+//        guard status == errSecSuccess else { throw KeychainError.unhandledError(status: status) }
         // Handle import logic here
         dismiss()
     }
 }
 
 #Preview {
-    PasswordCreationView()
+    PasswordCreationView(onPasswordCreated: {})
 }

@@ -58,7 +58,7 @@ struct ChatView<T: XXDKP>: View {
     var body: some View {
         ZStack {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(messages, id: \.id) { result in
                         ChatMessageRow(
                             result: result,

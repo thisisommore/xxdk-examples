@@ -140,31 +140,37 @@ struct CodenameGeneratorView: View {
 
 // MARK: - Header View
 struct HeaderView: View {
+    // State to control the tooltip popover visibility
+    @State private var showTooltip = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.blue)
-                
+            HStack(spacing: 8) {
                 Text("Find your Codename")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
+                
+                // Tooltip icon that shows a popover when tapped
+                Button(action: {
+                    showTooltip.toggle()
+                }) {
+                    Image(systemName: "info.circle")
+                        .font(.title3)
+                        .foregroundColor(.secondary)
+                }
+                .popover(isPresented: $showTooltip, arrowEdge: .top) {
+                    Text("Codenames are generated on your computer by you. No servers or databases are involved at all. Your Codename is your personally owned anonymous identity shared across every Haven Chat you join. It is private and it can never be traced back to you.")
+                        .font(.caption)
+                        .padding()
+                        // Adapts the popover size for a better fit on different devices
+                        .presentationCompactAdaptation(.popover)
+                }
             }
-            
-            Text("Codenames are generated on your computer by you. No servers or databases are involved at all. Your Codename is your personally owned anonymous identity shared across every Haven Chat you join. It is private and it can never be traced back to you.")
-                .font(.system(size: 12, weight: .regular))
-                .foregroundColor(.secondary)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(uiColor: .secondarySystemBackground))
-        )
+        .padding(6)
     }
 }
+
 
 // MARK: - Codename Card
 struct CodenameCard: View {

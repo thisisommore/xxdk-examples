@@ -3,10 +3,14 @@
 //  iOSExample
 //
 //  Created by Om More on 29/09/25.
+//  Optimized version with no warnings
 //
 
 import SwiftUI
 import UIKit
+
+// Thread-safe synchronous cache
+private let htmlCache = NSCache<NSString, NSAttributedString>()
 
 // MARK: - Attributed helpers
 
@@ -112,10 +116,80 @@ private extension NSAttributedString {
     }
 }
 
+// MARK: - Parsing Logic
+
+private struct HTMLParser {
+    static func parse(
+        html: String,
+        textColor: Color,
+        linkColor: Color,
+        underlineLinks: Bool,
+        baseTextStyle: UIFont.TextStyle,
+        preserveSizes: Bool,
+        preserveBoldItalic: Bool,
+        customFontSize: CGFloat?
+    ) -> AttributedString? {
+        let cacheKey = makeCacheKey(
+            html: html,
+            textColor: textColor,
+            linkColor: linkColor,
+            underlineLinks: underlineLinks,
+            customFontSize: customFontSize
+        )
+        
+        // Check cache
+        if let cached = htmlCache.object(forKey: cacheKey as NSString) {
+            return try? AttributedString(cached, including: \.uiKit)
+        }
+        
+        // Parse HTML
+        guard let ns = makeNSAttributedString(fromHTML: html) else {
+            return nil
+        }
+        
+        // Process
+        let processed = ns
+            .withSystemFonts(
+                baseTextStyle: baseTextStyle,
+                preserveSizes: preserveSizes,
+                preserveBoldItalic: preserveBoldItalic,
+                customFontSize: customFontSize
+            )
+            .withForegroundColor(UIColor(textColor))
+            .withLinkColor(UIColor(linkColor), underline: underlineLinks)
+            .trimmingTrailingNewlines()
+            .removingBottomParagraphSpacing()
+        
+        // Cache it
+        htmlCache.setObject(processed, forKey: cacheKey as NSString)
+        
+        return try? AttributedString(processed, including: \.uiKit)
+    }
+    
+    private static func makeCacheKey(
+        html: String,
+        textColor: Color,
+        linkColor: Color,
+        underlineLinks: Bool,
+        customFontSize: CGFloat?
+    ) -> String {
+        "\(html)_\(textColor.description)_\(linkColor.description)_\(underlineLinks)_\(customFontSize?.description ?? "nil")"
+    }
+    
+    private static func makeNSAttributedString(fromHTML html: String) -> NSAttributedString? {
+        let data = Data(html.utf8)
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.html,
+            .characterEncoding: String.Encoding.utf8.rawValue
+        ]
+        return try? NSAttributedString(data: data, options: options, documentAttributes: nil)
+    }
+}
+
 // MARK: - View
 
 @available(iOS 15.0, *)
-struct HTMLText: View {
+struct HTMLText: View, Equatable {
     private let html: String
     private let textColor: Color
     private let linkColor: Color
@@ -154,33 +228,29 @@ struct HTMLText: View {
         self.preserveBoldItalic = preserveBoldItalic
         self.customFontSize = customFontSize
     }
+    
+    // MARK: - Equatable
+    
+    static func == (lhs: HTMLText, rhs: HTMLText) -> Bool {
+        lhs.html == rhs.html &&
+        lhs.textColor == rhs.textColor &&
+        lhs.linkColor == rhs.linkColor &&
+        lhs.underlineLinks == rhs.underlineLinks &&
+        lhs.customFontSize == rhs.customFontSize
+    }
 
     var body: some View {
-        Group {
-            if let attributedString = attributedString {
-                Text(attributedString)
-                    .tint(linkColor) // for SwiftUI-driven link styling
-            } else {
-                Text(html).foregroundStyle(textColor)
-            }
-        }
-        .task {
-            await loadAttributedString()
-        }
-        .onChange(of: html) { _, _ in
-            Task { await loadAttributedString() }
-        }
-        .onChange(of: textColor) { _, _ in
-            Task { await loadAttributedString() }
-        }
-        .onChange(of: linkColor) { _, _ in
-            Task { await loadAttributedString() }
-        }
-        .onChange(of: underlineLinks) { _, _ in
-            Task { await loadAttributedString() }
-        }
-        .onChange(of: customFontSize) { _, _ in
-            Task { await loadAttributedString() }
+        if let attributedString = attributedString {
+            Text(attributedString)
+                .tint(linkColor)
+        } else {
+            // Fallback - show nothing while loading to avoid HTML flash
+            Text("")
+                .foregroundStyle(.clear)
+                .onAppear {
+                    // Parse on appear to avoid "publishing changes" warning
+                    loadAttributedString()
+                }
         }
     }
     
@@ -198,43 +268,22 @@ struct HTMLText: View {
         )
     }
     
-    @MainActor
-    private func loadAttributedString() async {
-        await Task.detached {
-            let ns = makeNSAttributedString(fromHTML: html)
-            
-            guard let ns = ns else {
-                await MainActor.run { attributedString = nil }
-                return
-            }
-            
-            // Normalize fonts/colors/links, then remove trailing newline and last-paragraph spacing.
-            let normalized = ns
-                .withSystemFonts(
-                    baseTextStyle: baseTextStyle,
-                    preserveSizes: preserveSizes,
-                    preserveBoldItalic: preserveBoldItalic,
-                    customFontSize: customFontSize
-                )
-                .withForegroundColor(UIColor(textColor))
-                .withLinkColor(UIColor(linkColor), underline: underlineLinks)
-                .trimmingTrailingNewlines()
-                .removingBottomParagraphSpacing()
-            
-            let attr = try? AttributedString(normalized, including: \.uiKit)
-            await MainActor.run { attributedString = attr }
-        }.value
-    }
-
-    // MARK: - HTML → NSAttributedString
-
-    private func makeNSAttributedString(fromHTML html: String) -> NSAttributedString? {
-        let data = Data(html.utf8)
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue
-        ]
-        return try? NSAttributedString(data: data, options: options, documentAttributes: nil)
+    // MARK: - Private
+    
+    private func loadAttributedString() {
+        // Use DispatchQueue to defer state update outside view update cycle
+        DispatchQueue.main.async {
+            self.attributedString = HTMLParser.parse(
+                html: html,
+                textColor: textColor,
+                linkColor: linkColor,
+                underlineLinks: underlineLinks,
+                baseTextStyle: baseTextStyle,
+                preserveSizes: preserveSizes,
+                preserveBoldItalic: preserveBoldItalic,
+                customFontSize: customFontSize
+            )
+        }
     }
 }
 
@@ -243,20 +292,29 @@ struct HTMLText: View {
 @available(iOS 15.0, *)
 struct HTMLText_Previews: PreviewProvider {
     static var previews: some View {
-        HTMLText("""
-            <p>This is a paragraph with a <a href="https://example.com">link</a>,
-            and <strong>bold</strong>/<em>italic</em> text.</p>
-            <h2>Heading keeps larger size</h2>
-            """,
-            textColor: .white,
-            linkColor: .white,
-            underlineLinks: true,
-            baseTextStyle: .body,
-            preserveSizes: true,
-            preserveBoldItalic: true
-        )
+        VStack(spacing: 20) {
+            HTMLText("""
+                <p>This is a paragraph with a <a href="https://example.com">link</a>,
+                and <strong>bold</strong>/<em>italic</em> text.</p>
+                <h2>Heading keeps larger size</h2>
+                """,
+                textColor: .white,
+                linkColor: .white,
+                underlineLinks: true,
+                baseTextStyle: .body,
+                preserveSizes: true,
+                preserveBoldItalic: true
+            )
+            
+            HTMLText("""
+                <p>This is another message with different HTML.</p>
+                """,
+                textColor: .white,
+                linkColor: .white
+            )
+        }
         .padding()
-        .background(Color.blue) // blue preview background
+        .background(Color.blue)
         .previewLayout(.sizeThatFits)
     }
 }

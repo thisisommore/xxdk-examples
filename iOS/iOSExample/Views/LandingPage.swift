@@ -36,11 +36,10 @@ struct LandingPage<T>: View where T: XXDKP {
                         }
                     }
                     .onChange(of: xxdk.statusPercentage) { _, newValue in
-                        if newValue == 100 {
+                        if newValue == 100 && !isLoadingDone {
                             isLoadingDone = true
                             navigation.path.append(Destination.home)
                         }
-
                     }
                 }.frame(width: 120)
 

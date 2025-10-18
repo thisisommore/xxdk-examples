@@ -37,7 +37,6 @@ extension Destination {
                 .navigationBarBackButtonHidden()
         case .codenameGenerator:
             CodenameGeneratorView()
-                .navigationTitle("Choose Codename")
                 .navigationBarBackButtonHidden()
         case .password:
             PasswordCreationView()

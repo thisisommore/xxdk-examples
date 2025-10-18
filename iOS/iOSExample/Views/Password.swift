@@ -1,5 +1,5 @@
 import SwiftUI
-
+import SwiftData
 
 
 @MainActor
@@ -8,15 +8,14 @@ public struct PasswordCreationView: View {
     @State private var password: String = ""
     @State private var confirm: String = ""
     @State private var attemptedSubmit: Bool = false
+    @State private var isLoading = false
     @FocusState private var focusedField: Field?
     @State private var showImportSheet: Bool = false
     @State private var importPassword: String = ""
     @EnvironmentObject var sm: SecretManager
-    var onPasswordCreated: () -> Void
-
-    public init(onPasswordCreated: @escaping () -> Void) {
-        self.onPasswordCreated = onPasswordCreated
-    }
+    @EnvironmentObject var xxdk: XXDK
+    @EnvironmentObject var swiftDataActor: SwiftDataActor
+    @Environment(\.navigation) var navigation
 
     // MARK: - Focus
     private enum Field { case password, confirm }
@@ -139,12 +138,19 @@ public struct PasswordCreationView: View {
 
                 // Primary action
                 Button(action: handleSubmit) {
-                    Text("Continue").bold()
-                        .frame(maxWidth: .infinity)
-                        .foregroundStyle(.white)
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .frame(width: 16, height: 16)
+                        }
+                        Text(isLoading ? xxdk.status : "Continue").bold()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(.white)
                 }
-                .buttonStyle(BranchButtonStyle(isEnabled: canContinue))
-                .disabled(!canContinue)
+                .buttonStyle(BranchButtonStyle(isEnabled: canContinue && !isLoading))
+                .disabled(!canContinue || isLoading)
                 .privacySensitive()
                 
                 // Import account button
@@ -171,12 +177,26 @@ public struct PasswordCreationView: View {
     private func handleSubmit() {
         attemptedSubmit = true
         guard canContinue else { return }
-        
+
         // Save password to Keychain
         try! sm.storePassword(password)
-       
-            onPasswordCreated()
 
+        // Show loading state
+        isLoading = true
+
+        // Call load1() and navigate to CodenameGeneratorView when done
+        // TODO: Task runs on same thread/actor, see deactched
+        
+        Task.detached {
+        
+            await xxdk.setUpCmix()
+
+            await MainActor.run {
+                isLoading = false
+                // Navigate to home after password creation
+                navigation.path.append(Destination.codenameGenerator)
+            }
+        }
     }
 
     // MARK: - Helpers
@@ -382,5 +402,9 @@ private struct ImportAccountSheet: View {
 }
 
 #Preview {
-    PasswordCreationView(onPasswordCreated: {})
+    PasswordCreationView()
+        .environmentObject(SecretManager())
+        .environmentObject(XXDK())
+        .environmentObject(SwiftDataActor(previewModelContainer: try! ModelContainer(for: Schema([]), configurations: [])))
+        .environment(\.navigation, AppNavigationPath())
 }

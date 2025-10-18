@@ -10,7 +10,9 @@ struct CodenameGeneratorView: View {
     @State private var codenames: [Codename] = []
     @State private var selectedCodename: Codename?
     @State private var isGenerating = false
-    
+    @State private var generatedIdentities: [GeneratedIdentity] = []
+    @EnvironmentObject private var xxdk: XXDK
+    @Environment(\.navigation) private var navigation
     private let adjectives1 = [
         "elector", "brother", "recruit", "clever", "swift", "mystic", "cosmic",
         "quantum", "stellar", "cyber", "digital", "neural", "atomic", "solar",
@@ -74,7 +76,10 @@ struct CodenameGeneratorView: View {
         }
         .background(Color(uiColor: .systemBackground))
         .onAppear {
-            if codenames.isEmpty {
+            Task.detached {
+                await xxdk.startNetworkFollower()
+            }
+            if codenames.isEmpty && !isGenerating {
                 generateCodenames()
             }
         }
@@ -84,21 +89,25 @@ struct CodenameGeneratorView: View {
         isGenerating = true
         let impact = UIImpactFeedbackGenerator(style: .medium)
         impact.impactOccurred()
-        
+
         withAnimation(.easeOut(duration: 0.3)) {
             selectedCodename = nil
         }
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Generate identities using XXDK
+            let newGeneratedIdentities = xxdk.generateIdentities(amountOfIdentities: 10)
+            generatedIdentities = newGeneratedIdentities
+
             withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) {
-                codenames = (0..<10).map { index in
-                    let adj1 = adjectives1.randomElement()!
-                    let adj2 = adjectives2.randomElement()!
-                    let noun = nouns.randomElement()!
-                    let codenameText = "\(adj1)\(adj2)\(noun)"
-                    let color = colors[index]
-                    
-                    return Codename(text: codenameText, color: color)
+                if newGeneratedIdentities.isEmpty {
+                    print("ERROR: No identities generated")
+                    // Could show an error message to the user here
+                } else {
+                    codenames = newGeneratedIdentities.enumerated().map { index, identity in
+                        let color = colors[index % colors.count]
+                        return Codename(text: identity.codename, color: color)
+                    }
                 }
                 isGenerating = false
             }
@@ -107,9 +116,25 @@ struct CodenameGeneratorView: View {
     
     private func claimCodename() {
         guard let selected = selectedCodename else { return }
+
+        // Find the corresponding identity from generatedIdentities
+        guard let identity = generatedIdentities.first(where: { $0.codename == selected.text }) else {
+            print("ERROR: Could not find identity for codename: \(selected.text)")
+            return
+        }
+
+        // Store the private identity in XXDK for later use
+        // This would typically be stored securely for the user's identity
+        print("✅ Claimed codename: \(selected.text)")
+        print("Private identity stored for later use")
+
         let success = UINotificationFeedbackGenerator()
         success.notificationOccurred(.success)
-        print("✅ Claimed codename: \(selected.text)")
+        let xxdkRef = xxdk
+        Task {
+            await xxdkRef.load(privateIdentity: identity.privateIdentity)
+        }
+        navigation.path.append(Destination.landing)
     }
 }
 

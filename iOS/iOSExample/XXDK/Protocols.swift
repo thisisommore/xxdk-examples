@@ -8,6 +8,7 @@
 import Kronos
 import Bindings
 import SwiftData
+import Foundation
 
 
  protocol XXDKP: ObservableObject, AnyObject {
@@ -16,7 +17,10 @@ import SwiftData
     var DM: Bindings.BindingsDMClient? { get set }
     var dmReceiver: DMReceiver { get set }
     var cmix: Bindings.BindingsCmix? {get set}
-    func load() async
+    func load(privateIdentity _privateIdentity: Data?) async
+     func setUpCmix() async
+     func startNetworkFollower() async
+    func generateIdentities(amountOfIdentities: Int) -> [GeneratedIdentity]
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32)
     func sendDM(msg: String, channelId: String)
     func sendReply(msg: String, channelId: String, replyToMessageIdB64: String)

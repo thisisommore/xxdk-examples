@@ -14,10 +14,40 @@
             filePath = "iOSExample/XXDK/XXDK.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "680"
-            endingLineNumber = "680"
-            landmarkName = "sendReaction(emoji:toMessageIdB64:inChannelId:)"
+            startingLineNumber = "691"
+            endingLineNumber = "691"
+            landmarkName = "sendDM(msg:channelId:)"
             landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "1D592AF3-5A81-44E4-9362-E979F4D11E14 - 9c102708a31f4444"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "iOSExample.XXDK.sendDM(msg: Swift.String, channelId: Swift.String) -&gt; ()"
+                  moduleName = "iOSExample.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/ommore/Documents/github/xx-network/ios/xxdk-examples/iOS/iOSExample/XXDK/XXDK.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "702"
+                  endingLineNumber = "702">
+               </Location>
+               <Location
+                  uuid = "1D592AF3-5A81-44E4-9362-E979F4D11E14 - 9c102708a31f46ff"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "iOSExample.XXDK.sendDM(msg: Swift.String, channelId: Swift.String) -&gt; ()"
+                  moduleName = "iOSExample.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/ommore/Documents/github/xx-network/ios/xxdk-examples/iOS/iOSExample/XXDK/XXDK.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "691"
+                  endingLineNumber = "691">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy

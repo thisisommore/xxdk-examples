@@ -9,6 +9,7 @@ import Kronos
 import Bindings
 import SwiftData
 import SwiftUI
+import Foundation
 public class XXDKMock: XXDKP {
     @Published var status: String = "Initiating";
     @Published var statusPercentage: Double = 10;
@@ -101,7 +102,15 @@ public class XXDKMock: XXDKP {
         print("Mock: Left channel: \(channelId)")
     }
     
-    func load() async {
+    func setUpCmix() async {
+        
+    }
+    
+    func startNetworkFollower() async {
+        
+    }
+    
+    func load(privateIdentity _privateIdentity: Data?) async {
         do {
             print("starting wait")
             try await Task.sleep(nanoseconds: 2_000_000_000) // Reduced to 2 seconds for testing
@@ -149,4 +158,32 @@ public class XXDKMock: XXDKP {
     var ndf: Data?
     var DM: Bindings.BindingsDMClient?
     var dmReceiver: DMReceiver = DMReceiver()
+
+    /// Mock implementation of generateIdentities
+    /// - Parameter amountOfIdentities: Number of identities to generate
+    /// - Returns: Array of mock GeneratedIdentity objects
+    func generateIdentities(amountOfIdentities: Int) -> [GeneratedIdentity] {
+        var identities: [GeneratedIdentity] = []
+
+        for i in 0..<amountOfIdentities {
+            // Generate mock private identity data
+            let mockPrivateIdentity = "mock_private_identity_\(i)_\(UUID().uuidString)".data(using: .utf8) ?? Data()
+
+            // Generate mock identity details
+            let mockCodename = "MockUser\(i)_\(UUID().uuidString.prefix(8))"
+            let mockCodeset = 1
+            let mockPubkey = "mock_pubkey_\(i)_\(UUID().uuidString)"
+
+            let mockIdentity = GeneratedIdentity(
+                privateIdentity: mockPrivateIdentity,
+                codename: mockCodename,
+                codeset: mockCodeset,
+                pubkey: mockPubkey
+            )
+
+            identities.append(mockIdentity)
+        }
+
+        return identities
+    }
 }

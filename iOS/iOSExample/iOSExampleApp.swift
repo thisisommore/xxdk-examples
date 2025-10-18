@@ -13,7 +13,8 @@ struct iOS_ExampleApp: App {
     @StateObject var logOutput = LogViewer()
     @StateObject var xxdk = XXDK()
     @StateObject private var sM = SecretManager()
-    var modelContainer: ModelContainer = {
+    @StateObject private var navigation = AppNavigationPath()
+    var modelData  = {
         // Include all SwiftData models used by the app
         let schema = Schema([
             Chat.self,
@@ -24,27 +25,40 @@ struct iOS_ExampleApp: App {
         let modelConfiguration = ModelConfiguration(schema: schema)
         
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let mC = try ModelContainer(
+                for: schema,
+                configurations: [modelConfiguration]
+            )
+            return (mC: mC, da: SwiftDataActor(modelContainer: mC))
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }();
-
-
+    }()
+    
     var body: some Scene {
         WindowGroup {
-            if sM.isPasswordSet {
-                LandingPage<XXDK>()
-                    .environmentObject(logOutput)
-                    .environmentObject(xxdk)
-                    .environmentObject(SwiftDataActor(modelContainer: modelContainer))
-            } else {
-                PasswordCreationView(onPasswordCreated: {
+            NavigationStack(path: $navigation.path) {
+                Color.clear
+                .navigationDestination(for: Destination.self) { destination in
+                    destination.destinationView()
+                }.onAppear{
                     
-                })
+                    xxdk.setModelContainer(mActor: modelData.da, sm: sM)
+                    
+                    print("ON appear")
+                    if !sM.isPasswordSet {
+                        navigation.path.append(Destination.password)
+                    } else {
+                        navigation.path.append(Destination.landing)
+                    }
+                }
             }
+            .modelContainer(modelData.mC)
+            .environmentObject(sM)
+            .environmentObject(xxdk)
+            .environmentObject(logOutput)
+            .environment(\.navigation, navigation)
+            .environmentObject(modelData.da)
         }
-        .modelContainer(modelContainer)
-        .environmentObject(sM)
     }
 }

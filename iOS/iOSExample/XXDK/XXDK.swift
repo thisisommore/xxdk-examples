@@ -27,7 +27,23 @@ enum MyError: Error {
     case runtimeError(String)
 }
 
+// Identity object structure for generated identities
+public struct GeneratedIdentity {
+    public let privateIdentity: Data
+    public let codename: String
+    public let codeset: Int
+    public let pubkey: String
+}
+
 public class XXDK: XXDKP {
+    private var nsLock = NSLock()
+    private func lockTask() {
+        nsLock.lock()
+    }
+    
+    private func unlockTask() {
+        nsLock.unlock()
+    }
     @Published var status: String = "..."
     @Published var statusPercentage: Double = 0;
     private var isNewUser: Bool = false;
@@ -93,7 +109,9 @@ public class XXDK: XXDKP {
 
     }
 
-    func load() async {
+    func setUpCmix() async {
+        lockTask()
+        defer {unlockTask()}
         // Always start from a clean SwiftData state per request
 
         do {
@@ -105,7 +123,6 @@ public class XXDK: XXDKP {
             )
         }
 
- 
 
         // Get secret from Keychain
         guard let sm else {
@@ -121,6 +138,7 @@ public class XXDK: XXDKP {
                 self.statusPercentage = 10
             }
 
+            // TODO: download this as soon as app starts if cmix is being created first time
             let downloadedNdf = downloadNDF(
                 url: MAINNET_URL,
                 certFilePath: MAINNET_CERT
@@ -148,8 +166,8 @@ public class XXDK: XXDKP {
                 )
             }
         }
-        
-        
+
+
         await MainActor.run {
             self.status = "Loading cMixx"
             self.statusPercentage = 32
@@ -168,7 +186,38 @@ public class XXDK: XXDKP {
             print("ERROR: could not load Cmix: " + err.localizedDescription)
             fatalError("could not load Cmix: " + err.localizedDescription)
         }
+    }
+    
+    func startNetworkFollower() async {
+        lockTask()
+        defer {unlockTask()}
+        guard let cmix else {
+            print("ERROR: cmix is not available")
+            fatalError("cmix is not available")
+        }
+        await MainActor.run {
+            self.status = "Starting network follower"
+            self.statusPercentage = 40
+        }
 
+        print(
+            "DMPUBKEY: \(DM?.getPublicKey()?.base64EncodedString() ?? "empty pubkey")"
+        )
+        print("DMTOKEN: \(DM?.getToken() ?? 0)")
+
+        do {
+            try cmix.startNetworkFollower(5000)
+            cmix.wait(forNetwork: 30000)
+        } catch let error {
+            print("ERROR: cannot start network: " + error.localizedDescription)
+            fatalError("cannot start network: " + error.localizedDescription)
+        }
+    }
+
+    func load(privateIdentity _privateIdentity: Data?) async {
+        lockTask()
+        defer {unlockTask()}
+        var err: NSError?
         guard let cmix else {
             print("ERROR: cmix is not available")
             fatalError("cmix is not available")
@@ -178,43 +227,28 @@ public class XXDK: XXDKP {
             self.status = "Loading identity"
             self.statusPercentage = 45
         }
-
-        let receptionID = cmix.getReceptionID()?.base64EncodedString()
-        print("cMix Reception ID: \(receptionID ?? "<nil value>")")
-
         let privateIdentity: Data
-        do {
-            privateIdentity = try cmix.ekvGet("MyPrivateIdentity")
-        } catch {
-            print("Generating DM Identity...")
-            // NOTE: This will be deprecated in favor of generateCodenameIdentity(...)
-            let _privateIdentity = Bindings.BindingsGenerateChannelIdentity(
-                cmix.getID(),
-                &err
-            )
-            if _privateIdentity == nil {
-                print("ERROR: dmId is nil")
-                fatalError("dmId is nil")
-            }
-            privateIdentity = _privateIdentity!
-            if let err {
-                print(
-                    "ERROR: could not generate codename id: "
-                        + err.localizedDescription
-                )
-                fatalError(
-                    "could not generate codename id: "
-                        + err.localizedDescription
-                )
-            }
-            print("Exported Codename Blob: " + privateIdentity.base64EncodedString())
+        if let _privateIdentity {
             do {
-                try cmix.ekvSet("MyPrivateIdentity", value: privateIdentity)
+                try cmix.ekvSet("MyPrivateIdentity", value: _privateIdentity)
             } catch let error {
                 print("ERROR: could not set ekv: " + error.localizedDescription)
                 fatalError("could not set ekv: " + error.localizedDescription)
             }
+            privateIdentity = _privateIdentity
+        } else {
+            do {
+                
+                
+                privateIdentity = try cmix.ekvGet("MyPrivateIdentity")
+            } catch let error {
+                print("ERROR: could not set ekv: " + error.localizedDescription)
+                fatalError("could not set ekv: " + error.localizedDescription)
+            }
+            
         }
+    
+
         print("Exported Codename Blob: " + privateIdentity.base64EncodedString())
 
         // Derive public identity JSON from the private identity and decode codename
@@ -302,23 +336,7 @@ public class XXDK: XXDKP {
             fatalError("could not load dm client: " + err.localizedDescription)
         }
 
-        await MainActor.run {
-            self.status = "Starting network follower"
-            self.statusPercentage = 70
-        }
-
-        print(
-            "DMPUBKEY: \(DM?.getPublicKey()?.base64EncodedString() ?? "empty pubkey")"
-        )
-        print("DMTOKEN: \(DM?.getToken() ?? 0)")
-
-        do {
-            try cmix.startNetworkFollower(5000)
-            cmix.wait(forNetwork: 30000)
-        } catch let error {
-            print("ERROR: cannot start network: " + error.localizedDescription)
-            fatalError("cannot start network: " + error.localizedDescription)
-        }
+ 
 
         await MainActor.run {
             self.status = "Connecting to nodes"
@@ -424,7 +442,13 @@ public class XXDK: XXDKP {
                     storageTagListener.data = Data(cm.getStorageTag().utf8)
                 }
 
-                if (!isNewUser) {return}
+                if (!isNewUser) {
+                    // Finalize status: ready
+                    await MainActor.run {
+                        self.statusPercentage = 100
+                    }
+                    return
+                }
                 isNewUser = false
                 // Update status: joining channels
                 await MainActor.run {
@@ -524,6 +548,77 @@ public class XXDK: XXDKP {
         await MainActor.run {
             self.statusPercentage = 100
         }
+    }
+
+    /// Generate multiple channel identities
+    /// - Parameter amountOfIdentities: Number of identities to generate
+    /// - Returns: Array of GeneratedIdentity objects containing private identity, codename, codeset, and pubkey
+    func generateIdentities(amountOfIdentities: Int) -> [GeneratedIdentity] {
+        guard let cmix else {
+            print("ERROR: cmix is not available")
+            return []
+        }
+
+        var identities: [GeneratedIdentity] = []
+        var err: NSError?
+
+        for _ in 0..<amountOfIdentities {
+            // Generate private identity
+            let privateIdentity = Bindings.BindingsGenerateChannelIdentity(
+                cmix.getID(),
+                &err
+            )
+
+            guard privateIdentity != nil else {
+                print("ERROR: Failed to generate private identity")
+                if let error = err {
+                    print("Error: \(error.localizedDescription)")
+                }
+                continue
+            }
+
+            guard err == nil else {
+                fatalError("ERROR: Failed to generate private identity: \(err!.localizedDescription)")
+            }
+            
+            // Derive public identity from private identity
+            let publicIdentity = Bindings.BindingsGetPublicChannelIdentityFromPrivate(
+                privateIdentity!,
+                &err
+            )
+
+            guard publicIdentity != nil else {
+                print("ERROR: Failed to derive public identity")
+                if let error = err {
+                    print("Error: \(error.localizedDescription)")
+                }
+                continue
+            }
+
+            guard err == nil else {
+                fatalError("ERROR: Failed to derive public identity: \(err!.localizedDescription)")
+            }
+            
+            do {
+                // Decode the public identity JSON
+                let identity = try Parser.decodeIdentity(from: publicIdentity!)
+
+                // Create the identity object
+                let generatedIdentity = GeneratedIdentity(
+                    privateIdentity: privateIdentity!,
+                    codename: identity.codename,
+                    codeset: identity.codeset,
+                    pubkey: identity.pubkey
+                )
+
+                identities.append(generatedIdentity)
+
+            } catch {
+                print("ERROR: Failed to decode identity JSON: \(error.localizedDescription)")
+            }
+        }
+
+        return identities
     }
 
     // Persist a reaction to SwiftData

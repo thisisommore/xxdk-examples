@@ -51,7 +51,7 @@ public struct IsReadyInfoJSON: Decodable {
 
 // Public identity derived from a private identity blob
 // Keys map to: PubKey, Codename, Color, Extension, CodesetVersion
-public struct IdentityJSON: Decodable {
+public struct IdentityJSON: Codable {
     public let pubkey: String
     public let codename: String
     public let color: String
@@ -150,7 +150,11 @@ public enum Parser {
     }
     
     // MARK: - Encode helpers
-    
+
+    public static func encodeIdentity(_ identity: IdentityJSON) throws -> Data {
+        try encoder.encode(identity)
+    }
+
     public static func encodeModelMessage(_ message: ModelMessageJSON) throws -> Data {
         try encoder.encode(message)
     }

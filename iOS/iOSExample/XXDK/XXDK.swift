@@ -9,6 +9,7 @@ import Bindings
 import Foundation
 import Kronos
 import SwiftData
+import SwiftUI
 
 // NDF is the configuration file used to connect to the xx network. It
 // is a list of known hosts and nodes on the network.
@@ -134,8 +135,10 @@ public class XXDK: XXDKP {
         if !FileManager.default.fileExists(atPath: stateDir.path) {
             // UX: Friendly staged progress
             await MainActor.run {
-                self.status = "Downloading NDF"
-                self.statusPercentage = 10
+                withAnimation {
+                    self.status = "Downloading NDF"
+                    self.statusPercentage = 10
+                }
             }
 
             // TODO: download this as soon as app starts if cmix is being created first time
@@ -145,8 +148,10 @@ public class XXDK: XXDKP {
             )
 
             await MainActor.run {
-                self.status = "Setting up cMixx"
-                self.statusPercentage = 25
+                withAnimation {
+                    self.status = "Setting up cMixx"
+                    self.statusPercentage = 25
+                }
             }
             var err: NSError?
             Bindings.BindingsNewCmix(
@@ -169,8 +174,10 @@ public class XXDK: XXDKP {
 
 
         await MainActor.run {
-            self.status = "Loading cMixx"
-            self.statusPercentage = 32
+            withAnimation {
+                self.status = "Loading cMixx"
+                self.statusPercentage = 32
+            }
         }
         var err: NSError?
         let loadedCmix = Bindings.BindingsLoadCmix(
@@ -196,8 +203,10 @@ public class XXDK: XXDKP {
             fatalError("cmix is not available")
         }
         await MainActor.run {
-            self.status = "Starting network follower"
-            self.statusPercentage = 40
+            withAnimation {
+                self.status = "Starting network follower"
+                self.statusPercentage = 40
+            }
         }
 
         print(
@@ -224,8 +233,10 @@ public class XXDK: XXDKP {
         }
 
         await MainActor.run {
-            self.status = "Loading identity"
-            self.statusPercentage = 45
+            withAnimation {
+                self.status = "Loading identity"
+                self.statusPercentage = 45
+            }
         }
         let privateIdentity: Data
         if let _privateIdentity {
@@ -290,8 +301,10 @@ public class XXDK: XXDKP {
         }
 
         await MainActor.run {
-            self.status = "Creating your identity"
-            self.statusPercentage = 55
+            withAnimation {
+                self.status = "Creating your identity"
+                self.statusPercentage = 55
+            }
         }
 
         let notifications = Bindings.BindingsLoadNotifications(
@@ -309,8 +322,10 @@ public class XXDK: XXDKP {
         }
 
         await MainActor.run {
-            self.status = "Syncing notifications"
-            self.statusPercentage = 60
+            withAnimation {
+                self.status = "Syncing notifications"
+                self.statusPercentage = 60
+            }
         }
 
         let receiverBuilder = DMReceiverBuilder(receiver: dmReceiver)
@@ -339,16 +354,20 @@ public class XXDK: XXDKP {
  
 
         await MainActor.run {
-            self.status = "Connecting to nodes"
-            self.statusPercentage = 75
+            withAnimation {
+                self.status = "Connecting to nodes"
+                self.statusPercentage = 75
+            }
         }
 
         remoteKV = cmix.getRemoteKV()
 
         // Update status: setting up remote KV
         await MainActor.run {
-            self.status = "Setting up remote KV"
-            self.statusPercentage = 80
+            withAnimation {
+                self.status = "Setting up remote KV"
+                self.statusPercentage = 80
+            }
         }
 
         let storageTagListener: RemoteKVKeyChangeListener
@@ -366,8 +385,10 @@ public class XXDK: XXDKP {
         }
 
         await MainActor.run {
-            self.status = "Waiting for network to be ready"
-            self.statusPercentage = 85
+            withAnimation {
+                self.status = "Waiting for network to be ready"
+                self.statusPercentage = 85
+            }
         }
 
         self.storageTagListener = storageTagListener
@@ -391,8 +412,10 @@ public class XXDK: XXDKP {
                 var err: NSError?
 
                 await MainActor.run {
-                    self.status = "Preparing channels manager"
-                    self.statusPercentage = 86
+                    withAnimation {
+                        self.status = "Preparing channels manager"
+                        self.statusPercentage = 86
+                    }
                 }
 
                 guard
@@ -438,22 +461,28 @@ public class XXDK: XXDKP {
 
                 // Retain Channels Manager for future channel sends
                 await MainActor.run {
-                    self.channelsManager = cm
-                    storageTagListener.data = Data(cm.getStorageTag().utf8)
+                    withAnimation {
+                        self.channelsManager = cm
+                        storageTagListener.data = Data(cm.getStorageTag().utf8)
+                    }
                 }
 
                 if (!isNewUser) {
                     // Finalize status: ready
                     await MainActor.run {
-                        self.statusPercentage = 100
+                        withAnimation {
+                            self.statusPercentage = 100
+                        }
                     }
                     return
                 }
                 isNewUser = false
                 // Update status: joining channels
                 await MainActor.run {
-                    self.status = "Joining channels"
-                    self.statusPercentage = 90
+                    withAnimation {
+                        self.status = "Joining channels"
+                        self.statusPercentage = 90
+                    }
                 }
 
                 if let e = err {
@@ -546,7 +575,9 @@ public class XXDK: XXDKP {
 
         // Finalize status: ready
         await MainActor.run {
-            self.statusPercentage = 100
+            withAnimation {
+                self.statusPercentage = 100
+            }
         }
     }
 

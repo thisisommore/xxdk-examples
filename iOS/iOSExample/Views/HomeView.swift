@@ -16,7 +16,12 @@ struct HomeView<T: XXDKP>: View {
                 NavigationLink(value: Destination.chat(chatId: chat.id, chatTitle: chat.name)) {
                     VStack(alignment: .leading) {
                         Text(chat.name).foregroundStyle(.primary)
-                        Text("No messages yet").foregroundStyle(.secondary)
+                        if let lastMessage = chat.messages.sorted(by: { $0.timestamp > $1.timestamp }).first {
+                            let senderName = lastMessage.isIncoming == false ? "you" : (lastMessage.sender?.codename ?? "unknown")
+                            Text("\(senderName): \(lastMessage.message)").foregroundStyle(.secondary).lineLimit(1)
+                        } else {
+                            Text("No messages yet").foregroundStyle(.secondary)
+                        }
                     }
                 }
                 .buttonStyle(.plain)

@@ -58,7 +58,7 @@ struct ChatView<T: XXDKP>: View {
     var body: some View {
         ZStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(messages, id: \.id) { result in
                         ChatMessageRow(
                             result: result,
@@ -78,7 +78,7 @@ struct ChatView<T: XXDKP>: View {
                         }
                     }
                     Spacer()
-                }.padding()
+                }.padding().scrollTargetLayout()
             }.defaultScrollAnchor(.bottom)
             VStack {
                 Spacer()

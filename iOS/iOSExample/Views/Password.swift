@@ -187,13 +187,10 @@ public struct PasswordCreationView: View {
         // Call load1() and navigate to CodenameGeneratorView when done
         // TODO: Task runs on same thread/actor, see deactched
         
-        Task {
-        
+        Task.detached {
             await xxdk.setUpCmix()
-
+            
             await MainActor.run {
-                isLoading = false
-                // Navigate to home after password creation
                 navigation.path.append(Destination.codenameGenerator)
             }
         }

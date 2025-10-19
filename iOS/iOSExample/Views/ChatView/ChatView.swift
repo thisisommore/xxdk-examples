@@ -60,7 +60,7 @@ struct ChatView<T: XXDKP>: View {
     var body: some View {
         ZStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: 0) {
                     EmptyView().navigationBarBackButtonHidden(true)
                         .navigationBarItems(leading: Button(action: {
                             self.presentationMode.wrappedValue.dismiss()

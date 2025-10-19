@@ -3,7 +3,7 @@
 //  iOSExample
 //
 //  Created by Om More on 29/09/25.
-//  Optimized version with no warnings
+//  Optimized version with skeleton loading
 //
 
 import SwiftUI
@@ -186,6 +186,68 @@ private struct HTMLParser {
     }
 }
 
+// MARK: - Skeleton Helper
+
+private struct SkeletonHelper {
+    static func estimateLineCount(from html: String) -> Int {
+        return html.count/14
+    }
+}
+
+// MARK: - Skeleton View
+
+@available(iOS 15.0, *)
+private struct SkeletonLine: View {
+    let width: CGFloat
+    @State private var animating = false
+    
+    var body: some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(Color.white.opacity(0.3))
+            .frame(height: 12)
+            .frame(maxWidth: width)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.0),
+                                Color.white.opacity(0.2),
+                                Color.white.opacity(0.0)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .offset(x: animating ? 200 : -200)
+            )
+            .clipped()
+            .onAppear {
+                withAnimation(
+                    Animation.linear(duration: 1.5)
+                        .repeatForever(autoreverses: false)
+                ) {
+                    animating = true
+                }
+            }
+    }
+}
+
+@available(iOS 15.0, *)
+private struct SkeletonPlaceholder: View {
+    let lineCount: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(0..<lineCount, id: \.self) { index in
+                SkeletonLine(
+                    width: index == lineCount - 1 ? .infinity * 0.7 : .infinity
+                )
+            }
+        }
+    }
+}
+
 // MARK: - View
 
 @available(iOS 15.0, *)
@@ -200,6 +262,7 @@ struct HTMLText: View, Equatable {
     private let customFontSize: CGFloat?
     
     @State private var attributedString: AttributedString?
+    @State private var estimatedLines: Int = 3
 
     /// - Parameters:
     ///   - html: Raw HTML string.
@@ -227,6 +290,7 @@ struct HTMLText: View, Equatable {
         self.preserveSizes = preserveSizes
         self.preserveBoldItalic = preserveBoldItalic
         self.customFontSize = customFontSize
+        self._estimatedLines = State(initialValue: SkeletonHelper.estimateLineCount(from: html))
     }
     
     // MARK: - Equatable
@@ -244,11 +308,9 @@ struct HTMLText: View, Equatable {
             Text(attributedString)
                 .tint(linkColor)
         } else {
-            // Fallback - show nothing while loading to avoid HTML flash
-            Text("")
-                .foregroundStyle(.clear)
+            // Show skeleton placeholder with estimated line count
+            SkeletonPlaceholder(lineCount: estimatedLines)
                 .onAppear {
-                    // Parse on appear to avoid "publishing changes" warning
                     loadAttributedString()
                 }
         }
@@ -297,6 +359,7 @@ struct HTMLText_Previews: PreviewProvider {
                 <p>This is a paragraph with a <a href="https://example.com">link</a>,
                 and <strong>bold</strong>/<em>italic</em> text.</p>
                 <h2>Heading keeps larger size</h2>
+                <p>Another paragraph to show multiple lines in the skeleton.</p>
                 """,
                 textColor: .white,
                 linkColor: .white,

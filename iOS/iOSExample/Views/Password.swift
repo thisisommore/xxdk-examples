@@ -1,6 +1,5 @@
-import SwiftUI
 import SwiftData
-
+import SwiftUI
 
 @MainActor
 public struct PasswordCreationView: View {
@@ -23,13 +22,13 @@ public struct PasswordCreationView: View {
     // MARK: - Rules
     private enum PasswordRule: CaseIterable {
         case length, upper, lower, digit, symbol
-       
+
         var label: String {
             switch self {
             case .length: return "At least 8 characters"
-            case .upper:  return "Contains an uppercase letter"
-            case .lower:  return "Contains a lowercase letter"
-            case .digit:  return "Contains a number"
+            case .upper: return "Contains an uppercase letter"
+            case .lower: return "Contains a lowercase letter"
+            case .digit: return "Contains a number"
             case .symbol: return "Contains a symbol (!@#$…)"
             }
         }
@@ -37,10 +36,15 @@ public struct PasswordCreationView: View {
         func isSatisfied(by s: String) -> Bool {
             switch self {
             case .length: return s.count >= 8
-            case .upper:  return s.range(of: "[A-Z]", options: .regularExpression) != nil
-            case .lower:  return s.range(of: "[a-z]", options: .regularExpression) != nil
-            case .digit:  return s.range(of: "[0-9]", options: .regularExpression) != nil
-            case .symbol: return s.range(of: "[^A-Za-z0-9]", options: .regularExpression) != nil
+            case .upper:
+                return s.range(of: "[A-Z]", options: .regularExpression) != nil
+            case .lower:
+                return s.range(of: "[a-z]", options: .regularExpression) != nil
+            case .digit:
+                return s.range(of: "[0-9]", options: .regularExpression) != nil
+            case .symbol:
+                return s.range(of: "[^A-Za-z0-9]", options: .regularExpression)
+                    != nil
             }
         }
     }
@@ -48,18 +52,20 @@ public struct PasswordCreationView: View {
     private var failingRules: [PasswordRule] {
         PasswordRule.allCases.filter { !$0.isSatisfied(by: password) }
     }
-    private var passwordsMatch: Bool { !password.isEmpty && password == confirm }
+    private var passwordsMatch: Bool {
+        !password.isEmpty && password == confirm
+    }
     private var canContinue: Bool { password.count >= 1 && passwordsMatch }
 
     private var strength: Double {
         let satisfied = Double(PasswordRule.allCases.count - failingRules.count)
         return max(0, min(1, satisfied / Double(PasswordRule.allCases.count)))
     }
-    
+
     private var strengthColor: Color {
         switch strength {
         case ..<0.8: return BranchColor.primary.opacity(0.8)
-        default:      return BranchColor.primary
+        default: return BranchColor.primary
         }
     }
 
@@ -72,6 +78,11 @@ public struct PasswordCreationView: View {
                     Text("Enter a password to secure your Haven identity")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                }
+                .onAppear {
+                    Task.detached {
+                        await xxdk.downloadNdf()
+                    }
                 }
 
                 // Fields with clear affordance
@@ -97,28 +108,44 @@ public struct PasswordCreationView: View {
                     .onSubmit { handleSubmit() }
                 }
 
-                
                 // Inline validation
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Password recommendation")
                     ForEach(PasswordRule.allCases, id: \.self) { rule in
                         let ok = rule.isSatisfied(by: password)
                         HStack(spacing: 8) {
-                            Image(systemName: ok ? "checkmark.circle.fill" : "xmark.circle")
-                                .foregroundStyle(ok ? BranchColor.primary : .secondary)
+                            Image(
+                                systemName: ok
+                                    ? "checkmark.circle.fill" : "xmark.circle"
+                            )
+                            .foregroundStyle(
+                                ok ? BranchColor.primary : .secondary
+                            )
                             Text(rule.label)
                                 .foregroundStyle(ok ? .primary : .secondary)
                                 .strikethrough(ok, color: .secondary)
-                                .accessibilityLabel("\(rule.label) \(ok ? "satisfied" : "not satisfied")")
+                                .accessibilityLabel(
+                                    "\(rule.label) \(ok ? "satisfied" : "not satisfied")"
+                                )
                         }
                         .font(.footnote)
                     }
 
                     if !confirm.isEmpty || attemptedSubmit {
                         HStack(spacing: 8) {
-                            Image(systemName: passwordsMatch ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .foregroundStyle(passwordsMatch ? BranchColor.primary : .orange)
-                            Text(passwordsMatch ? "Passwords match" : "Passwords don't match")
+                            Image(
+                                systemName: passwordsMatch
+                                    ? "checkmark.circle.fill"
+                                    : "exclamationmark.triangle.fill"
+                            )
+                            .foregroundStyle(
+                                passwordsMatch ? BranchColor.primary : .orange
+                            )
+                            Text(
+                                passwordsMatch
+                                    ? "Passwords match"
+                                    : "Passwords don't match"
+                            )
                         }
                         .font(.footnote)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -141,7 +168,9 @@ public struct PasswordCreationView: View {
                     HStack {
                         if isLoading {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .progressViewStyle(
+                                    CircularProgressViewStyle(tint: .white)
+                                )
                                 .frame(width: 16, height: 16)
                         }
                         Text(isLoading ? xxdk.status : "Continue").bold()
@@ -149,10 +178,12 @@ public struct PasswordCreationView: View {
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(.white)
                 }
-                .buttonStyle(BranchButtonStyle(isEnabled: canContinue && !isLoading))
+                .buttonStyle(
+                    BranchButtonStyle(isEnabled: canContinue && !isLoading)
+                )
                 .disabled(!canContinue || isLoading)
                 .privacySensitive()
-                
+
                 // Import account button
                 Button(action: { showImportSheet = true }) {
                     Text("Import an existing account").bold()
@@ -161,7 +192,10 @@ public struct PasswordCreationView: View {
                 }
                 .buttonStyle(BranchButtonStyle(isEnabled: true))
             }
-            .animation(.easeInOut(duration: 0.3), value: !confirm.isEmpty || attemptedSubmit)
+            .animation(
+                .easeInOut(duration: 0.3),
+                value: !confirm.isEmpty || attemptedSubmit
+            )
             .padding(.horizontal, 20)
             .padding(.top, 28)
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -186,7 +220,7 @@ public struct PasswordCreationView: View {
 
         // Call load1() and navigate to CodenameGeneratorView when done
         // TODO: Task runs on same thread/actor, see deactched
-        
+
         Task.detached {
             await xxdk.setUpCmix()
             
@@ -201,7 +235,7 @@ public struct PasswordCreationView: View {
         switch value {
         case ..<0.4: return "Weak"
         case ..<0.8: return "Okay"
-        default:      return "Strong"
+        default: return "Strong"
         }
     }
 }
@@ -209,9 +243,17 @@ public struct PasswordCreationView: View {
 // MARK: - Branch Color Palette
 private enum BranchColor {
     static let primary = Color.haven
-    static let secondary = Color(red: 180/255, green: 140/255, blue: 60/255)
-    static let disabled = Color(red: 236/255, green: 186/255, blue: 96/255).opacity(0.5)
-    static let light = Color(red: 246/255, green: 206/255, blue: 136/255)
+    static let secondary = Color(
+        red: 180 / 255,
+        green: 140 / 255,
+        blue: 60 / 255
+    )
+    static let disabled = Color(
+        red: 236 / 255,
+        green: 186 / 255,
+        blue: 96 / 255
+    ).opacity(0.5)
+    static let light = Color(red: 246 / 255, green: 206 / 255, blue: 136 / 255)
 }
 
 // MARK: - Custom Button Style
@@ -219,24 +261,32 @@ private struct BranchButtonStyle: ButtonStyle {
     let isEnabled: Bool
     var isSecondary: Bool = false
     @Environment(\.colorScheme) private var colorScheme
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.vertical, 14)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isEnabled ? (isSecondary ? BranchColor.secondary : BranchColor.primary) : disabledColor)
+                    .fill(
+                        isEnabled
+                            ? (isSecondary
+                                ? BranchColor.secondary : BranchColor.primary)
+                            : disabledColor
+                    )
                     .animation(.easeInOut(duration: 0.3), value: isEnabled)
             )
             .opacity(isEnabled ? 1.0 : disabledOpacity)
             .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .animation(
+                .easeInOut(duration: 0.15),
+                value: configuration.isPressed
+            )
     }
-    
+
     private var disabledColor: Color {
         colorScheme == .dark ? Color(.systemGray4) : .gray.opacity(0.4)
     }
-    
+
     private var disabledOpacity: Double {
         colorScheme == .dark ? 0.5 : 1.0
     }
@@ -274,7 +324,11 @@ private struct LabeledSecureField: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(
-                        isInvalid ? Color.red : (isFocused ? BranchColor.primary : (text.isEmpty ? .clear : .separator)),
+                        isInvalid
+                            ? Color.red
+                            : (isFocused
+                                ? BranchColor.primary
+                                : (text.isEmpty ? .clear : .separator)),
                         lineWidth: isFocused ? 1.5 : 1
                     )
             )
@@ -282,8 +336,8 @@ private struct LabeledSecureField: View {
     }
 }
 
-private extension Color {
-    static let separator = Color(UIColor.separator)
+extension Color {
+    fileprivate static let separator = Color(UIColor.separator)
 }
 
 // MARK: - Import Account Sheet
@@ -292,7 +346,7 @@ private struct ImportAccountSheet: View {
     @Binding var importPassword: String
     @State private var selectedFileURL: URL?
     @State private var showFilePicker = false
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -302,18 +356,23 @@ private struct ImportAccountSheet: View {
                         Text("Import your account")
                             .font(.title2)
                             .bold()
-                        
-                        Text("Note that importing your account will only restore your codename. You need to rejoin manually any previously joined channel")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(
+                            "Note that importing your account will only restore your codename. You need to rejoin manually any previously joined channel"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
-                    
+
                     // File picker
                     Button(action: { showFilePicker = true }) {
                         HStack {
                             Image(systemName: "doc")
-                            Text(selectedFileURL?.lastPathComponent ?? "Choose a file")
+                            Text(
+                                selectedFileURL?.lastPathComponent
+                                    ?? "Choose a file"
+                            )
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .foregroundStyle(.secondary)
@@ -330,13 +389,13 @@ private struct ImportAccountSheet: View {
                         )
                     }
                     .foregroundStyle(.primary)
-                    
+
                     // Password field
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Unlock export with your password")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                        
+
                         SecureField("-", text: $importPassword)
                             .textContentType(.password)
                             .textInputAutocapitalization(.never)
@@ -352,14 +411,19 @@ private struct ImportAccountSheet: View {
                                     .strokeBorder(Color.separator, lineWidth: 1)
                             )
                     }
-                    
+
                     // Import button
                     Button(action: handleImport) {
                         Text("Import").bold()
                             .frame(maxWidth: .infinity)
                             .foregroundStyle(.white)
                     }
-                    .buttonStyle(BranchButtonStyle(isEnabled: !importPassword.isEmpty && selectedFileURL != nil))
+                    .buttonStyle(
+                        BranchButtonStyle(
+                            isEnabled: !importPassword.isEmpty
+                                && selectedFileURL != nil
+                        )
+                    )
                     .disabled(importPassword.isEmpty || selectedFileURL == nil)
                 }
                 .padding(.horizontal, 20)
@@ -384,15 +448,17 @@ private struct ImportAccountSheet: View {
             }
         }
     }
-    
+
     private func handleImport() {
         let account = "self"
         let password = "credentials.password.data(using: String.Encoding.utf8)!"
-        var query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                    kSecAttrAccount as String: account,
-                                    kSecValueData as String: password]
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: password,
+        ]
         let status = SecItemAdd(query as CFDictionary, nil)
-//        guard status == errSecSuccess else { throw KeychainError.unhandledError(status: status) }
+        //        guard status == errSecSuccess else { throw KeychainError.unhandledError(status: status) }
         // Handle import logic here
         dismiss()
     }
@@ -402,6 +468,13 @@ private struct ImportAccountSheet: View {
     PasswordCreationView()
         .environmentObject(SecretManager())
         .environmentObject(XXDK())
-        .environmentObject(SwiftDataActor(previewModelContainer: try! ModelContainer(for: Schema([]), configurations: [])))
+        .environmentObject(
+            SwiftDataActor(
+                previewModelContainer: try! ModelContainer(
+                    for: Schema([]),
+                    configurations: []
+                )
+            )
+        )
         .environment(\.navigation, AppNavigationPath())
 }

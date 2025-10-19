@@ -50,7 +50,7 @@ struct iOS_ExampleApp: App {
                     if !sM.isPasswordSet {
                         navigation.path.append(Destination.password)
                     } else {
-                        navigation.path.append(Destination.landing)
+                        navigation.path.append(Destination.home)
                     }
                 }
             }

@@ -37,6 +37,7 @@ public struct GeneratedIdentity {
 }
 
 public class XXDK: XXDKP {
+    private var downloadedNdf: Data?
     private var nsLock = NSLock()
     private func lockTask() {
         nsLock.lock()
@@ -109,6 +110,24 @@ public class XXDK: XXDKP {
         }
 
     }
+    
+    func downloadNdf() async {
+        lockTask()
+        defer {unlockTask()}
+        // UX: Friendly staged progress
+        await MainActor.run {
+            withAnimation {
+                self.status = "Downloading NDF"
+                self.statusPercentage = 10
+            }
+        }
+
+        // TODO: download this as soon as app starts if cmix is being created first time
+        downloadedNdf = downloadNDF(
+            url: MAINNET_URL,
+            certFilePath: MAINNET_CERT
+        )
+    }
 
     func setUpCmix() async {
         lockTask()
@@ -133,20 +152,10 @@ public class XXDK: XXDKP {
         // NOTE: Empty string forces defaults, these are settable but it is recommended that you use the defaults.
         let cmixParamsJSON = "".data
         if !FileManager.default.fileExists(atPath: stateDir.path) {
-            // UX: Friendly staged progress
-            await MainActor.run {
-                withAnimation {
-                    self.status = "Downloading NDF"
-                    self.statusPercentage = 10
-                }
+
+            guard let downloadedNdf else {
+                fatalError("no ndf downloaded yet")
             }
-
-            // TODO: download this as soon as app starts if cmix is being created first time
-            let downloadedNdf = downloadNDF(
-                url: MAINNET_URL,
-                certFilePath: MAINNET_CERT
-            )
-
             await MainActor.run {
                 withAnimation {
                     self.status = "Setting up cMixx"

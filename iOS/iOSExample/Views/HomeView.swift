@@ -9,7 +9,7 @@ struct HomeView<T: XXDKP>: View {
     @EnvironmentObject private var swiftDataActor: SwiftDataActor
 
     var width: CGFloat
-
+    @State private var showTooltip = false
     var body: some View {
         List {
             ForEach(chats) { chat in
@@ -23,10 +23,10 @@ struct HomeView<T: XXDKP>: View {
                             lastMessage.isIncoming == false
                             ? "you"
                             : (lastMessage.sender?.codename ?? "unknown")
-                        Text("\(senderName): \(lastMessage.message)")
+                        Text("\(senderName): \(lastMessage.message)").font(.system(size: 12))
                             .foregroundStyle(.secondary).lineLimit(1)
                     } else {
-                        Text("No messages yet").font(.system(size: 10))
+                        Text("No messages yet").font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
                 }.background(
@@ -45,16 +45,40 @@ struct HomeView<T: XXDKP>: View {
         }
         .tint(.gray.opacity(0.3))
         .toolbar {
-            Button {
-                showingSheet.toggle()
-            } label: {
-                Image(systemName: "plus")
+            ToolbarItem(placement: .topBarLeading) {
+                if xxdk.statusPercentage != 100 {
+                    Button(action: {
+                        showTooltip.toggle()
+                    }) {
+                        ProgressView()
+//                        Text("\(String(format: "%.0f",xxdk.statusPercentage))%")
+                    }
+                }
+               
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingSheet.toggle()
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+            
         }
         .sheet(isPresented: $showingSheet) {
             NewChatView<T>()
         }
         .background(Color.appBackground)
+        .onAppear {
+            if xxdk.statusPercentage == 0 {
+                Task.detached {
+                    await xxdk.setUpCmix();
+                    await xxdk.startNetworkFollower();
+                    await xxdk.load(privateIdentity: nil);
+                }
+               
+            }
+        }
     }
 }
 
@@ -308,6 +332,7 @@ struct PasswordInputView: View {
         HomeView<XXDKMock>(width: UIScreen.w(100))
             .modelContainer(container)
             .environmentObject(XXDKMock())
+            .navigationTitle(Text("Home"))
     }
 
 }

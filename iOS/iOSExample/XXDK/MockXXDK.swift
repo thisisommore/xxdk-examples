@@ -12,7 +12,7 @@ import SwiftUI
 import Foundation
 public class XXDKMock: XXDKP {
     @Published var status: String = "Initiating";
-    @Published var statusPercentage: Double = 10;
+    @Published var statusPercentage: Double = 0;
     public func setModelContainer(mActor: SwiftDataActor, sm: SecretManager) {
         // Retain container and inject into receivers/callbacks
     
@@ -103,11 +103,17 @@ public class XXDKMock: XXDKP {
     }
     
     func setUpCmix() async {
-        
+        withAnimation {
+            statusPercentage = 10
+            status = "Setting cmix"
+        }
     }
     
     func startNetworkFollower() async {
-        
+        withAnimation {
+            statusPercentage = 20
+            status = "Starting network follower"
+        }
     }
     
     func load(privateIdentity _privateIdentity: Data?) async {
@@ -115,7 +121,7 @@ public class XXDKMock: XXDKP {
             print("starting wait")
             try await Task.sleep(nanoseconds: 2_000_000_000) // Reduced to 2 seconds for testing
             withAnimation {
-                statusPercentage = 20
+                statusPercentage = 30
                 status = "Connecting to network"
             }
             

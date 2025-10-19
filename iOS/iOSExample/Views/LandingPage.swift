@@ -25,16 +25,7 @@ struct LandingPage<T>: View where T: XXDKP {
                         .gray
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))
-                    .onAppear {
-                        if xxdk.statusPercentage == 0 {
-                            Task.detached {
-                                await xxdk.setUpCmix();
-                                await xxdk.startNetworkFollower();
-                                await xxdk.load(privateIdentity: nil);
-                            }
-                           
-                        }
-                    }
+                   
                     .onChange(of: xxdk.statusPercentage) { _, newValue in
                         if newValue == 100 && !isLoadingDone {
                             isLoadingDone = true

@@ -13,21 +13,36 @@ struct HomeView<T: XXDKP>: View {
     var body: some View {
         List {
             ForEach(chats) { chat in
-                NavigationLink(value: Destination.chat(chatId: chat.id, chatTitle: chat.name)) {
-                    VStack(alignment: .leading) {
-                        Text(chat.name).foregroundStyle(.primary)
-                        if let lastMessage = chat.messages.sorted(by: { $0.timestamp > $1.timestamp }).first {
-                            let senderName = lastMessage.isIncoming == false ? "you" : (lastMessage.sender?.codename ?? "unknown")
-                            Text("\(senderName): \(lastMessage.message)").foregroundStyle(.secondary).lineLimit(1)
-                        } else {
-                            Text("No messages yet").foregroundStyle(.secondary)
-                        }
+
+                VStack(alignment: .leading) {
+                    Text(chat.name).foregroundStyle(.primary)
+                    if let lastMessage = chat.messages.sorted(by: {
+                        $0.timestamp > $1.timestamp
+                    }).first {
+                        let senderName =
+                            lastMessage.isIncoming == false
+                            ? "you"
+                            : (lastMessage.sender?.codename ?? "unknown")
+                        Text("\(senderName): \(lastMessage.message)")
+                            .foregroundStyle(.secondary).lineLimit(1)
+                    } else {
+                        Text("No messages yet").font(.system(size: 10))
+                            .foregroundStyle(.secondary)
                     }
-                }
-                .buttonStyle(.plain)
+                }.background(
+                    NavigationLink(
+                        value: Destination.chat(
+                            chatId: chat.id,
+                            chatTitle: chat.name
+                        )
+                    ) {
+
+                    }.opacity(0)
+                )
+
             }
+
         }
-        .listStyle(.plain)
         .tint(.gray.opacity(0.3))
         .toolbar {
             Button {
@@ -39,6 +54,7 @@ struct HomeView<T: XXDKP>: View {
         .sheet(isPresented: $showingSheet) {
             NewChatView<T>()
         }
+        .background(Color.appBackground)
     }
 }
 
@@ -74,17 +90,24 @@ struct NewChatView<T: XXDKP>: View {
                     }
                 }
                 .toolbar(content: {
-                    Button(action: { dismiss() }, label: { Image(systemName: "xmark") })
+                    Button(
+                        action: { dismiss() },
+                        label: { Image(systemName: "xmark") }
+                    )
                 })
 
                 Button(
                     action: {
-                        let trimmed = inviteLink.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let trimmed = inviteLink.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        )
                         guard !trimmed.isEmpty else { return }
 
                         do {
                             // Check privacy level first
-                            let privacyLevel = try xxdk.getChannelPrivacyLevel(url: trimmed)
+                            let privacyLevel = try xxdk.getChannelPrivacyLevel(
+                                url: trimmed
+                            )
 
                             if privacyLevel == .secret {
                                 // Private channel - show password input
@@ -94,14 +117,17 @@ struct NewChatView<T: XXDKP>: View {
                             } else {
                                 // Public channel - proceed directly
                                 print("getting channel from url")
-                                let channel = try xxdk.getChannelFromURL(url: trimmed)
+                                let channel = try xxdk.getChannelFromURL(
+                                    url: trimmed
+                                )
                                 print("channel data \(channel)")
                                 channelData = channel
                                 showConfirmationSheet = true
                                 errorMessage = nil
                             }
                         } catch {
-                            errorMessage = "Failed to get channel: \(error.localizedDescription)"
+                            errorMessage =
+                                "Failed to get channel: \(error.localizedDescription)"
                         }
                     },
                     label: {
@@ -117,10 +143,15 @@ struct NewChatView<T: XXDKP>: View {
                     url: inviteLink,
                     onConfirm: { password in
                         do {
-                            let pp = try xxdk.decodePrivateURL(url: inviteLink, password: password)
+                            let pp = try xxdk.decodePrivateURL(
+                                url: inviteLink,
+                                password: password
+                            )
                             prettyPrint = pp
                             let channel = try xxdk.getPrivateChannelFromURL(
-                                url: inviteLink, password: password)
+                                url: inviteLink,
+                                password: password
+                            )
                             channelData = channel
                             showConfirmationSheet = true
                             showPasswordSheet = false
@@ -136,7 +167,8 @@ struct NewChatView<T: XXDKP>: View {
                     }
                 )
             }
-            .sheet(isPresented: $showConfirmationSheet) { [inviteLink, channelData] in
+            .sheet(isPresented: $showConfirmationSheet) {
+                [inviteLink, channelData] in
                 ChannelConfirmationView(
                     channelName: channelData?.name ?? "",
                     channelURL: inviteLink,
@@ -144,7 +176,10 @@ struct NewChatView<T: XXDKP>: View {
                     onConfirm: { enableDM in
                         Task {
                             await joinChannel(
-                                url: inviteLink, channelData: channelData!, enableDM: enableDM)
+                                url: inviteLink,
+                                channelData: channelData!,
+                                enableDM: enableDM
+                            )
                         }
                     }
                 )
@@ -152,9 +187,14 @@ struct NewChatView<T: XXDKP>: View {
             .navigationTitle("Join Channel")
             .navigationBarTitleDisplayMode(.inline)
         }
+
     }
 
-    private func joinChannel(url: String, channelData: ChannelJSON, enableDM: Bool) async {
+    private func joinChannel(
+        url: String,
+        channelData: ChannelJSON,
+        enableDM: Bool
+    ) async {
         isJoining = true
         errorMessage = nil
 
@@ -197,7 +237,8 @@ struct NewChatView<T: XXDKP>: View {
             dismiss()
         } catch {
             print("Failed to join channel: \(error)")
-            errorMessage = "Failed to join channel: \(error.localizedDescription)"
+            errorMessage =
+                "Failed to join channel: \(error.localizedDescription)"
             self.channelData = nil
             self.prettyPrint = nil
         }
@@ -218,9 +259,11 @@ struct PasswordInputView: View {
         NavigationView {
             Form {
                 Section(header: Text("Private Channel")) {
-                    Text("This channel is password protected. Enter the password to continue.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    Text(
+                        "This channel is password protected. Enter the password to continue."
+                    )
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 }
 
                 Section(header: Text("Password")) {
@@ -257,7 +300,9 @@ struct PasswordInputView: View {
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     ["Tom", "Mayur", "Shashank"].forEach { name in
-        container.mainContext.insert(Chat(pubKey: Data(), name: name, dmToken: 0))
+        container.mainContext.insert(
+            Chat(pubKey: Data(), name: name, dmToken: 0)
+        )
     }
     return NavigationStack {
         HomeView<XXDKMock>(width: UIScreen.w(100))

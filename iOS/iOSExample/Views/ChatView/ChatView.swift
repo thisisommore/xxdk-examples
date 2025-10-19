@@ -12,7 +12,9 @@ struct ChatView<T: XXDKP>: View {
     let width: CGFloat
     let chatId: String
     let chatTitle: String
+    @Environment(\.presentationMode) var presentationMode: Binding<PresentationMode>
 
+ 
     @EnvironmentObject private var swiftDataActor: SwiftDataActor
     @Query private var chatResults: [Chat]
 
@@ -59,6 +61,14 @@ struct ChatView<T: XXDKP>: View {
         ZStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+                    EmptyView().navigationBarBackButtonHidden(true)
+                        .navigationBarItems(leading: Button(action: {
+                            self.presentationMode.wrappedValue.dismiss()
+                            }) {
+                                HStack {
+                                    Image(systemName: "chevron.left").aspectRatio(contentMode: .fit)
+                                }
+                            })
                     ForEach(messages, id: \.id) { result in
                         ChatMessageRow(
                             result: result,
@@ -91,6 +101,7 @@ struct ChatView<T: XXDKP>: View {
                 )
             }
         }
+      
         .navigationTitle(chatTitle)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -136,7 +147,10 @@ struct ChatView<T: XXDKP>: View {
         }
         
         
-        .background(Color.appBackground)}
+        .background(Color.appBackground)
+
+ 
+    }
 }
 
 #Preview {

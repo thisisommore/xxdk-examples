@@ -41,6 +41,7 @@ struct iOS_ExampleApp: App {
                 Color.clear
                 .navigationDestination(for: Destination.self) { destination in
                     destination.destinationView()
+                        .toolbarBackground(.ultraThinMaterial)
                 }.onAppear{
                     
                     xxdk.setModelContainer(mActor: modelData.da, sm: sM)

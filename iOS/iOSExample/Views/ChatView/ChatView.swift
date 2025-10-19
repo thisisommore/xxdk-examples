@@ -134,8 +134,9 @@ struct ChatView<T: XXDKP>: View {
                 chatTitle: dmChat.name
             )
         }
-
-    }
+        
+        
+        .background(Color.appBackground)}
 }
 
 #Preview {

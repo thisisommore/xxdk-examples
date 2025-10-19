@@ -161,6 +161,7 @@ struct ChatView<T: XXDKP>: View {
             chatTitle: chat.name
         )
         .modelContainer(container)
+        .environmentObject(SwiftDataActor(previewModelContainer: container))
         .environmentObject(XXDKMock())
     }
 }

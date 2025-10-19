@@ -31,7 +31,7 @@ struct iOS_ExampleApp: App {
             )
             return (mC: mC, da: SwiftDataActor(modelContainer: mC))
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            fatalError("Could not create ModelContainer: \(error.localizedDescription)")
         }
     }()
     

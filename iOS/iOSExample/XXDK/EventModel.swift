@@ -98,7 +98,8 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         messageIdB64: String? = nil,
         replyTo: String? = nil,
         timestamp: Int64,
-        dmToken: Int32? = nil
+        dmToken: Int32? = nil,
+        color: Int
     ) -> Int64 {
         
 
@@ -137,7 +138,8 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                         id: senderId,
                         pubkey: pubKey,
                         codename: codename,
-                        dmToken: dmToken ?? 0
+                        dmToken: dmToken ?? 0,
+                        color: color
                     )
                     actor.insert(sender!)
                     try modelActor?.save()
@@ -232,6 +234,10 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             let identity = try Parser.decodeIdentity(from: identityData!)
             let channelIdB64 = channelID?.base64EncodedString() ?? "unknown"
             let nick = identity.codename
+            var _color: String = identity.color
+            if _color.hasPrefix("0x") || _color.hasPrefix("0X") {
+                _color.removeFirst(2)
+                }
             if let decodedText = decodeMessage(messageTextB64) {
                 // Persist into SwiftData chat if available
                 return persistIncomingMessageIfPossible(
@@ -242,7 +248,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                     senderPubKey: pubKey,
                     messageIdB64: messageIdB64,
                     timestamp: timestamp,
-                    dmToken: dmToken
+                    dmToken: dmToken, color: Int(_color, radix: 16)!
                 )
             }
             return 0
@@ -278,13 +284,18 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
         // Get codename using same approach as EventModelBuilder
         var err: NSError?
         let identityData = Bindings.BindingsConstructIdentity(pubKey, codeset, &err)
+        let color: Int
         let codename: String
         do {
             let identity = try Parser.decodeIdentity(from: identityData!)
             codename = identity.codename
+            var _color: String = identity.color
+            if _color.hasPrefix("0x") || _color.hasPrefix("0X") {
+                _color.removeFirst(2)
+                }
+             color = Int(_color, radix: 16)!
         } catch {
-            // Fallback to provided nickname if identity decoding fails
-            codename = nickname ?? "Unknown"
+            fatalError("\(error)")
         }
 
         // Validate inputs
@@ -310,6 +321,8 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 let senderDescriptor = FetchDescriptor<Sender>(
                     predicate: #Predicate { $0.id == senderId }
                 )
+                
+               
                 if let existingSender = try? actor.fetch(senderDescriptor).first {
                     // Update existing sender's dmToken
                     existingSender.dmToken = dmToken
@@ -321,7 +334,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                         id: senderId,
                         pubkey: pubKey,
                         codename: codename,
-                        dmToken: dmToken
+                        dmToken: dmToken, color: color
                     )
                     log(
                         "Created new Sender for \(codename) with dmToken: \(dmToken)"
@@ -407,12 +420,17 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             &err
         )
         let nick: String
+        let color: Int
         do {
             let identity = try Parser.decodeIdentity(from: identityData!)
             nick = identity.codename
+            var _color: String = identity.color
+            if _color.hasPrefix("0x") || _color.hasPrefix("0X") {
+                _color.removeFirst(2)
+                }
+             color = Int(_color, radix: 16)!
         } catch {
-            // Fallback to provided nickname if identity decoding fails
-            nick = nickname ?? ""
+            fatalError("\(error)")
         }
         let channelIdB64 = channelID?.base64EncodedString() ?? "unknown"
         guard let reactionTo else {
@@ -428,7 +446,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
                 messageIdB64: messageIdB64,
                 replyTo: reactionTo.base64EncodedString(),
                 timestamp: timestamp,
-                dmToken: dmToken
+                dmToken: dmToken, color: color
             )
         }
         return 0

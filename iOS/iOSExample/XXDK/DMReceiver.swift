@@ -73,15 +73,22 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         var err: NSError?
         let identityData = Bindings.BindingsConstructIdentity(partnerKey, codeset, &err)
         let codename: String
+        let color: Int
         do {
             let identity = try Parser.decodeIdentity(from: identityData!)
             codename = identity.codename
+            var _color: String = identity.color
+            if _color.hasPrefix("0x") || _color.hasPrefix("0X") {
+                _color.removeFirst(2)
+                }
+            color = Int(_color, radix: 16)!
         } catch {
-            // Fallback to provided nickname if identity decoding fails
-            codename = "Unknown"
+            fatalError("\(error)")
         }
+        
+ 
 
-        persistIncoming(message: decodedMessage, codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+        persistIncoming(message: decodedMessage, codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID, color: color)
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -104,15 +111,21 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         var err: NSError?
         let identityData = Bindings.BindingsConstructIdentity(partnerKey, codeset, &err)
         let codename: String
+        let color: Int
         do {
             let identity = try Parser.decodeIdentity(from: identityData!)
             codename = identity.codename
+            var _color: String = identity.color
+            if _color.hasPrefix("0x") || _color.hasPrefix("0X") {
+                _color.removeFirst(2)
+                }
+            color = Int(_color, radix: 16)!
         } catch {
-            // Fallback to provided nickname if identity decoding fails
-            codename = "Unknown"
+            //TODO
+            fatalError("\(error)")
         }
 
-        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID, color: color)
         msgCnt += 1;
         return msgCnt;
     }
@@ -125,15 +138,20 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         var err: NSError?
         let identityData = Bindings.BindingsConstructIdentity(partnerKey, codeset, &err)
         let codename: String
+        let color: Int
         do {
             let identity = try Parser.decodeIdentity(from: identityData!)
             codename = identity.codename
+            var _color: String = identity.color
+            if _color.hasPrefix("0x") || _color.hasPrefix("0X") {
+                _color.removeFirst(2)
+                }
+            color = Int(_color, radix: 16)!
         } catch {
-            // Fallback to provided nickname if identity decoding fails
-            codename = "Unknown"
+            fatalError("\(error)")
         }
 
-        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID)
+        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID, color: color)
         msgCnt += 1;
         return msgCnt;
     }
@@ -164,7 +182,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         }
     }
 
-    private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data) {
+    private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data, color: Int) {
         guard let backgroundContext = modelActor else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
 
@@ -187,7 +205,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                         print("DMReceiver: Updated Sender dmToken for \(name): \(dmToken)")
                     } else {
                         // Create new sender
-                        sender = Sender(id: senderId, pubkey: partnerKey, codename: name, dmToken: dmToken)
+                        sender = Sender(id: senderId, pubkey: partnerKey, codename: name, dmToken: dmToken, color: color)
                         print("DMReceiver: Created new Sender for \(name) with dmToken: \(dmToken)")
                     }
 

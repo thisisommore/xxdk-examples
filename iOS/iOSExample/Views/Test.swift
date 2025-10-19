@@ -9,13 +9,22 @@ import SwiftUI
 
 struct TestV: View {
     var body: some View {
-        VStack {
-            Text("preview reply")
-            VStack {
-                Text("message")
-            }.background(.pink)
-        }
-    }
+       NavigationStack {
+         Text("Hello, world!")
+           .toolbar {
+             ToolbarItem(placement: .navigationBarTrailing) {
+               Button(action: {
+                 // Code for button action goes here
+               }) {
+                 Image(systemName: "gear")
+                   .foregroundStyle(.primary)
+               }
+               .buttonStyle(.borderless)
+             }
+           }
+           .navigationTitle("Hello")
+       }
+     }
 }
 
 #Preview {

@@ -33,7 +33,6 @@ extension Destination {
                 .navigationBarBackButtonHidden()
         case .home:
             HomeView<XXDK>(width: UIScreen.w(100))
-                .navigationTitle("Home")
                 .navigationBarBackButtonHidden()
         case .codenameGenerator:
             CodenameGeneratorView()
@@ -43,6 +42,7 @@ extension Destination {
                 .navigationBarBackButtonHidden()
         case let .chat(chatId, chatTitle):
             ChatView<XXDK>(width: UIScreen.w(100), chatId: chatId, chatTitle: chatTitle)
+            
         }
     }
 }

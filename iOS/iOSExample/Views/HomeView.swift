@@ -79,6 +79,8 @@ struct HomeView<T: XXDKP>: View {
                
             }
         }
+        .navigationTitle("Chat")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -332,7 +334,8 @@ struct PasswordInputView: View {
         HomeView<XXDKMock>(width: UIScreen.w(100))
             .modelContainer(container)
             .environmentObject(XXDKMock())
-            .navigationTitle(Text("Home"))
+            .navigationTitle("Chat")
+            .navigationBarBackButtonHidden()
     }
 
 }

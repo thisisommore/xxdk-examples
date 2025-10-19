@@ -67,6 +67,7 @@ struct ChatView<T: XXDKP>: View {
                             }) {
                                 HStack {
                                     Image(systemName: "chevron.left").aspectRatio(contentMode: .fit)
+                                    Text("Back")
                                 }
                             })
                     ForEach(messages, id: \.id) { result in
@@ -103,16 +104,7 @@ struct ChatView<T: XXDKP>: View {
         }
       
         .navigationTitle(chatTitle)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Button {
-                    showChannelOptions = true
-                } label: {
-                    Text(chatTitle)
-                        .font(.headline)
-                }
-            }
-        }
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showChannelOptions) {
             ChannelOptionsView<T>(chat: chat) {
                 Task {

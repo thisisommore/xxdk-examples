@@ -25,6 +25,7 @@
 		980A0D762B96723E004FB15A /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9854D57B2B98C269009437B8 /* mainnet.crt */ = {isa = PBXFileReference; lastKnownFileType = text; path = mainnet.crt; sourceTree = "<group>"; };
 		A14987562EA202B800E72C00 /* UIScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIScreen.swift; sourceTree = "<group>"; };
+		A17324322EA515BF00388AC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A1E0DB002EA35F3200E344DC /* Secret.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secret.swift; sourceTree = "<group>"; };
 		AC0A4ED193EDC7519BB5AFA4 /* Pods_iOSExample.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iOSExample.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAA55C59EA7ABF73C37204DC /* Pods-iOSExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iOSExample.release.xcconfig"; path = "Target Support Files/Pods-iOSExample/Pods-iOSExample.release.xcconfig"; sourceTree = "<group>"; };
@@ -78,6 +79,7 @@
 		980A0D6B2B96723C004FB15A /* iOSExample */ = {
 			isa = PBXGroup;
 			children = (
+				A17324322EA515BF00388AC0 /* Info.plist */,
 				A1E0DB002EA35F3200E344DC /* Secret.swift */,
 				A17427A72EA2770D00D39261 /* Views */,
 				A14987562EA202B800E72C00 /* UIScreen.swift */,
@@ -381,13 +383,18 @@
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iOSExample/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Haven;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -425,13 +432,18 @@
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = iOSExample/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Haven;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UIStatusBarStyle = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

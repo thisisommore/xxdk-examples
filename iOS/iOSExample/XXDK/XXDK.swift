@@ -37,18 +37,35 @@ public struct GeneratedIdentity {
 }
 
 public class XXDK: XXDKP {
+    public func progress(_ status: XXDKProgressStatus) async {
+        await MainActor.run {
+            withAnimation {
+                self.status = status.message
+                
+                // Handle special case: .final forces 100%
+                if status.increment == -1 {
+                    self.statusPercentage = 100.0
+                } else {
+                    // Increment the percentage, capping at 100
+                    self.statusPercentage = min(self.statusPercentage + status.increment, 100.0)
+                }
+            }
+        }
+    }
+
+
     private var downloadedNdf: Data?
     private var nsLock = NSLock()
     private func lockTask() {
         nsLock.lock()
     }
-    
+
     private func unlockTask() {
         nsLock.unlock()
     }
     @Published var status: String = "..."
-    @Published var statusPercentage: Double = 0;
-    private var isNewUser: Bool = false;
+    @Published var statusPercentage: Double = 0
+    private var isNewUser: Bool = false
     // Channels Manager retained for channel sends
     private var channelsManager: Bindings.BindingsChannelsManager?
     private var stateDir: URL
@@ -103,6 +120,16 @@ public class XXDK: XXDKP {
                 isNewUser = true
             }
             stateDir = stateDir.appendingPathComponent("ekv")
+               // ⭐ IMPORTANT: Create ekv directory if it doesn't exist
+               if !FileManager.default.fileExists(atPath: stateDir.path) {
+                   try FileManager.default.createDirectory(
+                       at: stateDir,
+                       withIntermediateDirectories: true
+                   )
+                   print("📂 Created ekv directory: \(stateDir.path)")
+               }
+               
+               print("📂 Using ekv directory: \(stateDir.path)")
         } catch let err {
             fatalError(
                 "failed to get state directory: " + err.localizedDescription
@@ -110,17 +137,12 @@ public class XXDK: XXDKP {
         }
 
     }
-    
+
     func downloadNdf() async {
         lockTask()
-        defer {unlockTask()}
+        defer { unlockTask() }
         // UX: Friendly staged progress
-        await MainActor.run {
-            withAnimation {
-                self.status = "Downloading NDF"
-                self.statusPercentage = 10
-            }
-        }
+        await progress(.downloadingNDF)
 
         // TODO: download this as soon as app starts if cmix is being created first time
         downloadedNdf = downloadNDF(
@@ -131,7 +153,7 @@ public class XXDK: XXDKP {
 
     func setUpCmix() async {
         lockTask()
-        defer {unlockTask()}
+        defer { unlockTask() }
         // Always start from a clean SwiftData state per request
 
         do {
@@ -142,26 +164,26 @@ public class XXDK: XXDKP {
                 "SwiftData: Failed to delete all data at startup: \(error)"
             )
         }
-
-
+//        channelsManager.repl
         // Get secret from Keychain
         guard let sm else {
             fatalError("no secret manager")
         }
         let secret = try! sm.getPassword().data
         // NOTE: Empty string forces defaults, these are settable but it is recommended that you use the defaults.
-        let cmixParamsJSON = "".data
-        if !FileManager.default.fileExists(atPath: stateDir.path) {
+        // Load default cMix params, set EnableImmediateSending, and pass as JSON
+        let defaultParamsJSON = Bindings.BindingsGetDefaultCMixParams()
+        var params = try! Parser.decodeCMixParams(from: defaultParamsJSON ?? Data())
+
+        // Ensure immediate sending is enabled per user request
+        params.Network.EnableImmediateSending = true
+        let cmixParamsJSON = try! Parser.encodeCMixParams(params)
+        if isNewUser {
 
             guard let downloadedNdf else {
                 fatalError("no ndf downloaded yet")
             }
-            await MainActor.run {
-                withAnimation {
-                    self.status = "Setting up cMixx"
-                    self.statusPercentage = 25
-                }
-            }
+            await progress(.settingUpCmix)
             var err: NSError?
             Bindings.BindingsNewCmix(
                 downloadedNdf.utf8,
@@ -181,13 +203,7 @@ public class XXDK: XXDKP {
             }
         }
 
-
-        await MainActor.run {
-            withAnimation {
-                self.status = "Loading cMixx"
-                self.statusPercentage = 32
-            }
-        }
+        await progress(.loadingCmix)
         var err: NSError?
         let loadedCmix = Bindings.BindingsLoadCmix(
             stateDir.path,
@@ -203,20 +219,15 @@ public class XXDK: XXDKP {
             fatalError("could not load Cmix: " + err.localizedDescription)
         }
     }
-    
+
     func startNetworkFollower() async {
         lockTask()
-        defer {unlockTask()}
+        defer { unlockTask() }
         guard let cmix else {
             print("ERROR: cmix is not available")
             fatalError("cmix is not available")
         }
-        await MainActor.run {
-            withAnimation {
-                self.status = "Starting network follower"
-                self.statusPercentage = 40
-            }
-        }
+        await progress(.startingNetworkFollower)
 
         print(
             "DMPUBKEY: \(DM?.getPublicKey()?.base64EncodedString() ?? "empty pubkey")"
@@ -224,12 +235,14 @@ public class XXDK: XXDKP {
         print("DMTOKEN: \(DM?.getToken() ?? 0)")
 
         do {
-            try cmix.startNetworkFollower(5000)
-            cmix.wait(forNetwork: 30000)
+            try cmix.startNetworkFollower(50000)
+            cmix.wait(forNetwork: 10 * 60 * 1000)
         } catch let error {
             print("ERROR: cannot start network: " + error.localizedDescription)
             fatalError("cannot start network: " + error.localizedDescription)
         }
+        
+        await progress(.networkFollowerComplete)
     }
 
     func load(privateIdentity _privateIdentity: Data?) async {
@@ -241,12 +254,8 @@ public class XXDK: XXDKP {
             fatalError("cmix is not available")
         }
 
-        await MainActor.run {
-            withAnimation {
-                self.status = "Loading identity"
-                self.statusPercentage = 45
-            }
-        }
+        await progress(.loadingIdentity)
+
         let privateIdentity: Data
         if let _privateIdentity {
             do {
@@ -258,18 +267,16 @@ public class XXDK: XXDKP {
             privateIdentity = _privateIdentity
         } else {
             do {
-                
-                
                 privateIdentity = try cmix.ekvGet("MyPrivateIdentity")
             } catch let error {
                 print("ERROR: could not set ekv: " + error.localizedDescription)
                 fatalError("could not set ekv: " + error.localizedDescription)
             }
-            
         }
-    
 
-        print("Exported Codename Blob: " + privateIdentity.base64EncodedString())
+        print(
+            "Exported Codename Blob: " + privateIdentity.base64EncodedString()
+        )
 
         // Derive public identity JSON from the private identity and decode codename
         let publicIdentity: Data?
@@ -309,12 +316,7 @@ public class XXDK: XXDKP {
             }
         }
 
-        await MainActor.run {
-            withAnimation {
-                self.status = "Creating your identity"
-                self.statusPercentage = 55
-            }
-        }
+        await progress(.creatingIdentity)
 
         let notifications = Bindings.BindingsLoadNotifications(
             cmix.getID(),
@@ -330,12 +332,7 @@ public class XXDK: XXDKP {
             )
         }
 
-        await MainActor.run {
-            withAnimation {
-                self.status = "Syncing notifications"
-                self.statusPercentage = 60
-            }
-        }
+        await progress(.syncingNotifications)
 
         let receiverBuilder = DMReceiverBuilder(receiver: dmReceiver)
 
@@ -360,24 +357,11 @@ public class XXDK: XXDKP {
             fatalError("could not load dm client: " + err.localizedDescription)
         }
 
- 
-
-        await MainActor.run {
-            withAnimation {
-                self.status = "Connecting to nodes"
-                self.statusPercentage = 75
-            }
-        }
+        await progress(.connectingToNodes)
 
         remoteKV = cmix.getRemoteKV()
 
-        // Update status: setting up remote KV
-        await MainActor.run {
-            withAnimation {
-                self.status = "Setting up remote KV"
-                self.statusPercentage = 80
-            }
-        }
+        await progress(.settingUpRemoteKV)
 
         let storageTagListener: RemoteKVKeyChangeListener
         // Start RemoteKV listener for the storage tag during load so it's ready before channel join
@@ -393,66 +377,43 @@ public class XXDK: XXDKP {
             fatalError("failed to set storageTagListener \(error)")
         }
 
-        await MainActor.run {
-            withAnimation {
-                self.status = "Waiting for network to be ready"
-                self.statusPercentage = 85
-            }
-        }
+        await progress(.waitingForNetwork)
 
         self.storageTagListener = storageTagListener
         // Run readiness + Channels Manager creation in the background, retrying every 2 seconds until success
 
-        Task {
-            while true {
-                let readyData = try cmix.isReady(0.1)
-                let readinessInfo = try Parser.decodeIsReadyInfo(
-                    from: readyData
+        do {
+           
+            let cmixId = cmix.getID()
+            // Attempt to create Channels Manager on the MainActor
+            var err: NSError?
+
+            await progress(.preparingChannelsManager)
+
+            guard
+                let noti = Bindings.BindingsLoadNotificationsDummy(
+                    cmixId,
+                    &err
                 )
-                if !readinessInfo.isReady {
-                    print(
-                        "cMix not ready yet (howClose=\(readinessInfo.howClose)) — retrying in 2s…"
-                    )
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    continue
-                }
-                let cmixId = cmix.getID()
-                // Attempt to create Channels Manager on the MainActor
-                var err: NSError?
+            else {
+                print("ERROR: BindingsLoadNotificationsDummy returned nil")
+                fatalError("BindingsLoadNotificationsDummy returned nil")
+            }
 
-                await MainActor.run {
-                    withAnimation {
-                        self.status = "Preparing channels manager"
-                        self.statusPercentage = 86
-                    }
-                }
+            //                let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
 
-                guard
-                    let noti = Bindings.BindingsLoadNotificationsDummy(
-                        cmixId,
-                        &err
-                    )
-                else {
-                    print("ERROR: BindingsLoadNotificationsDummy returned nil")
-                    fatalError("BindingsLoadNotificationsDummy returned nil")
-                }
+            await MainActor.run {
+                eventModelBuilder = EventModelBuilder(
+                    model: EventModel()
+                )
+            }
 
-                //                let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
+            if let actor = self.modelActor {
+                self.eventModelBuilder?.configure(modelActor: actor)
+            }
 
-                await MainActor.run {
-                    eventModelBuilder = EventModelBuilder(
-                        model: EventModel(
-                            storageTag: String(
-                                describing: storageTagListener.data
-                            )
-                        )
-                    )
-                }
-
-                if let actor = self.modelActor {
-                    self.eventModelBuilder?.configure(modelActor: actor)
-                }
-
+            if isNewUser {
+                
                 guard
                     let cm = Bindings.BindingsNewChannelsManager(
                         cmix.getID(),
@@ -467,50 +428,61 @@ public class XXDK: XXDKP {
                     print("ERROR: no cm")
                     fatalError("no cm")
                 }
+                self.channelsManager = cm
+                print("BindingsNewChannelsManager: tag - \(cm.getStorageTag())")
+                // Create remote KV entry for channels storage tag
+                let timestamp = ISO8601DateFormatter().string(from: Date())
+                let storageTagDataJson = try Parser.encodeString(cm.getStorageTag())
+                let storageTagData = storageTagDataJson.base64EncodedString()
+                let entry = RemoteKVEntry(
+                    version: 0,
+                    data: storageTagData,
+                    timestamp: timestamp
+                )
+                let entryData = try Parser.encodeRemoteKVEntry(entry)
+                print("ed=rkv \(entryData.base64EncodedString())")
+                try remoteKV!.set("channels-storage-tag", objectJSON: entryData)
+                self.storageTagListener!.data = cm.getStorageTag().data
+            } else {
+                let storageTagString = self.storageTagListener!.data!.utf8
+                print("BindingsLoadChannelsManager: tag - \(storageTagString)")
+                let cm = Bindings.BindingsLoadChannelsManager(
+                    cmix.getID(),
+                    storageTagString,
+                    eventModelBuilder,
+                    nil,
+                    noti.getID(),
+                    channelUICallbacks,
+                    &err
+                )
+                self.channelsManager = cm
+            }
 
-                // Retain Channels Manager for future channel sends
-                await MainActor.run {
-                    withAnimation {
-                        self.channelsManager = cm
-                        storageTagListener.data = Data(cm.getStorageTag().utf8)
-                    }
-                }
-
-                if (!isNewUser) {
-                    // Finalize status: ready
-                    await MainActor.run {
-                        withAnimation {
-                            self.statusPercentage = 100
-                        }
-                    }
-                    return
-                }
-                isNewUser = false
-                // Update status: joining channels
-                await MainActor.run {
-                    withAnimation {
-                        self.status = "Joining channels"
-                        self.statusPercentage = 90
-                    }
-                }
-
-                if let e = err {
-                    print("ERROR: \(err)")
+            if !isNewUser {
+                // Finalize status: ready for new users
+                await progress(.readyExistingUser)
+                return
+            }
+            isNewUser = false
+            // Update status: joining channels
+            await progress(.joiningChannels)
+            while true {
+                let readyData = try cmix.isReady(0.1)
+                let readinessInfo = try Parser.decodeIsReadyInfo(
+                    from: readyData
+                )
+                if !readinessInfo.isReady {
+                    print(
+                        "cMix not ready yet (howClose=\(readinessInfo.howClose)) — retrying in 2s…"
+                    )
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    continue
                 } else {
-                    //                     Successfully created Channels Manager; join channel in background and exit loop
-                    Task {
-                        do {
-                            _ = try await self.joinChannel(XX_GENERAL_CHAT)
-                        } catch {
-                            print(
-                                "Failed to join channel in background: \(error)"
-                            )
-                        }
-                    }
                     break
                 }
-
             }
+        } catch {
+            fatalError("err \(error)")
         }
 
         guard let codename, let DM else {
@@ -543,7 +515,8 @@ public class XXDK: XXDKP {
                         let chat = Chat(
                             pubKey: selfPubKeyData,
                             name: "<self>",
-                            dmToken: selfToken
+                            dmToken: selfToken,
+                            color: 0xE97451
                         )
                         actor.insert(chat)
                         try actor.save()
@@ -582,14 +555,9 @@ public class XXDK: XXDKP {
             )
         }
 
-        // Finalize status: ready
-        await MainActor.run {
-            withAnimation {
-                self.statusPercentage = 100
-            }
-        }
+        // Finalize status: ready for new users
+        await progress(.ready)
     }
-
     /// Generate multiple channel identities
     /// - Parameter amountOfIdentities: Number of identities to generate
     /// - Returns: Array of GeneratedIdentity objects containing private identity, codename, codeset, and pubkey
@@ -618,14 +586,17 @@ public class XXDK: XXDKP {
             }
 
             guard err == nil else {
-                fatalError("ERROR: Failed to generate private identity: \(err!.localizedDescription)")
+                fatalError(
+                    "ERROR: Failed to generate private identity: \(err!.localizedDescription)"
+                )
             }
-            
+
             // Derive public identity from private identity
-            let publicIdentity = Bindings.BindingsGetPublicChannelIdentityFromPrivate(
-                privateIdentity!,
-                &err
-            )
+            let publicIdentity =
+                Bindings.BindingsGetPublicChannelIdentityFromPrivate(
+                    privateIdentity!,
+                    &err
+                )
 
             guard publicIdentity != nil else {
                 print("ERROR: Failed to derive public identity")
@@ -636,9 +607,11 @@ public class XXDK: XXDKP {
             }
 
             guard err == nil else {
-                fatalError("ERROR: Failed to derive public identity: \(err!.localizedDescription)")
+                fatalError(
+                    "ERROR: Failed to derive public identity: \(err!.localizedDescription)"
+                )
             }
-            
+
             do {
                 // Decode the public identity JSON
                 let identity = try Parser.decodeIdentity(from: publicIdentity!)
@@ -654,7 +627,9 @@ public class XXDK: XXDKP {
                 identities.append(generatedIdentity)
 
             } catch {
-                print("ERROR: Failed to decode identity JSON: \(error.localizedDescription)")
+                print(
+                    "ERROR: Failed to decode identity JSON: \(error.localizedDescription)"
+                )
             }
         }
 
@@ -846,7 +821,6 @@ public class XXDK: XXDKP {
         } catch {
             print("sendReaction(channel) failed: \(error.localizedDescription)")
         }
-
     }
 
     func sendDM(msg: String, toPubKey: Data, partnerToken: Int32) {
@@ -1036,21 +1010,14 @@ public class XXDK: XXDKP {
             print("ERROR: no storageTagListener")
             fatalError("no storageTagListener")
         }
-        guard let storageTagData = storageTagListener.data else {
+        guard let storageTagEntry = storageTagListener.data else {
             print("ERROR: no storageTagListener data")
             fatalError("no storageTagListener data")
         }
         var err: NSError?
         let cmixId = cmix.getID()
-        let storageTag = String(
-            data: storageTagData,
-            encoding: .utf8
-        )
-
-        // Use the same Channels DB path as created during initialization
-        let channelsDir = stateDir.deletingLastPathComponent()
-            .appendingPathComponent("channels", isDirectory: true)
-        //        let dbPath = channelsDir.appendingPathComponent("channels.sqlite").path
+  
+        let storageTag = storageTagEntry.utf8
 
         guard let noti = Bindings.BindingsLoadNotificationsDummy(cmixId, &err)
         else {
@@ -1062,7 +1029,7 @@ public class XXDK: XXDKP {
                 "could not load notifications dummy: \(e.localizedDescription)"
             )
         }
-
+        print("BindingsLoadChannelsManager: tag - \(storageTag)")
         let cm = Bindings.BindingsLoadChannelsManager(
             cmixId,
             storageTag,
@@ -1089,27 +1056,6 @@ public class XXDK: XXDKP {
         let channel = try Parser.decodeChannel(from: raw)
         print("Joined channel: \(channel.name)")
         return channel
-    }
-
-    // Convenience: join a known channel by human-readable name (non-throwing)
-    func joinChannel(name: String) async {
-        // Map friendly names to the precomputed pretty-printed channel descriptor
-        let descriptor: String?
-        switch name {
-        case "xxGeneralChat", "#general":
-            descriptor = XX_GENERAL_CHAT
-        default:
-            descriptor = nil
-        }
-        guard let pretty = descriptor else {
-            print("joinChannel(name:): Unknown channel name \(name); no-op")
-            return
-        }
-        do {
-            _ = try await joinChannel(pretty)
-        } catch {
-            print("joinChannel(name:): failed to join \(name): \(error)")
-        }
     }
 
     // downloadNdf uses the mainnet URL to download and verify the
@@ -1358,3 +1304,4 @@ public class XXDK: XXDKP {
         print("Successfully left channel: \(channelId)")
     }
 }
+

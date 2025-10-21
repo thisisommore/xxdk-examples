@@ -57,7 +57,7 @@ struct iOS_ExampleApp: App {
             .modelContainer(modelData.mC)
             .environmentObject(sM)
             .environmentObject(xxdk)
-            .environmentObject(logOutput)
+//            .environmentObject(logOutput)
             .environment(\.navigation, navigation)
             .environmentObject(modelData.da)
         }

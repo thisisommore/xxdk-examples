@@ -225,6 +225,7 @@ public struct PasswordCreationView: View {
             await xxdk.setUpCmix()
             
             await MainActor.run {
+                print("append time")
                 navigation.path.append(Destination.codenameGenerator)
             }
         }
@@ -452,7 +453,7 @@ private struct ImportAccountSheet: View {
     private func handleImport() {
         let account = "self"
         let password = "credentials.password.data(using: String.Encoding.utf8)!"
-        var query: [String: Any] = [
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: account,
             kSecValueData as String: password,

@@ -183,7 +183,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
             try modelActor?.save()
             return Int64(msg.persistentModelID.hashValue)
         } catch {
-            print(error)
+            print("persist msg error \(error)")
             fatalError(
                 error.localizedDescription
             )
@@ -191,9 +191,7 @@ final class EventModel: NSObject, BindingsEventModelProtocol {
 
     }
 
-    private let storageTag: String
 
-    init(storageTag: String) { self.storageTag = storageTag }
 
     func joinChannel(_ channel: String?) {
     }

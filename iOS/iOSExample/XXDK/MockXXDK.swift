@@ -18,7 +18,7 @@ public class XXDKMock: XXDKP {
     
         self.dmReceiver.modelActor = mActor
         self.channelUICallbacks.configure(modelActor: mActor)
-        self.eventModelBuilder = EventModelBuilder(model: EventModel(storageTag: "mock-storage-tag"))
+        self.eventModelBuilder = EventModelBuilder(model: EventModel())
         self.eventModelBuilder?.configure(modelActor: mActor)
     }
     

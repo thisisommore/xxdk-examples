@@ -1,15 +1,30 @@
 import SwiftUI
+import Foundation
 
 struct MessageItem: View {
     let text: String
     let isIncoming: Bool
     let repliedTo: String?
     let sender: Sender?
-    let timeStamp: Date = Date()
+    let timeStamp: String
 
     var onReply: (() -> Void)?
-    var onDM: ((String, Int32, Data) -> Void)?
+    var onDM: ((String, Int32, Data, Int) -> Void)?
 
+    init(text: String, isIncoming: Bool, repliedTo: String?, sender: Sender?, onReply: (() -> Void)? = nil, onDM: ((String, Int32, Data, Int) -> Void)? = nil, isEmojiSheetPresented: Bool = false, shouldTriggerReply: Bool = false, selectedEmoji: MessageEmoji = .none, timestamp: Date) {
+        self.text = text
+        self.isIncoming = isIncoming
+        self.repliedTo = repliedTo
+        self.sender = sender
+        self.onReply = onReply
+        self.onDM = onDM
+        _isEmojiSheetPresented = State(initialValue: isEmojiSheetPresented)
+        _shouldTriggerReply = State(initialValue: shouldTriggerReply)
+        _selectedEmoji = State(initialValue: selectedEmoji)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm a"
+        self.timeStamp = formatter.string(from: timestamp)
+    }
     @State private var isEmojiSheetPresented = false
     @State private var shouldTriggerReply = false
     @State private var selectedEmoji: MessageEmoji = .none
@@ -36,6 +51,7 @@ struct MessageItem: View {
                         text: text,
                         isIncoming: isIncoming,
                         sender: sender,
+                        timestamp: timeStamp,
                         selectedEmoji: $selectedEmoji,
                         shouldTriggerReply: $shouldTriggerReply,
                         onDM: onDM
@@ -89,9 +105,11 @@ struct MessageItem: View {
                 onReply: {
                     print("Reply tapped")
                 },
-                onDM: { name, token, pubkey in
+                onDM: { name, token, pubkey, color in
                     print("DM to \(name)")
-                }
+                },
+                selectedEmoji: MessageEmoji.none,
+                timestamp: Date()
             )
 
             // Incoming message with link
@@ -109,7 +127,7 @@ struct MessageItem: View {
                     codename: "Alex",
                     dmToken: 456,
                     color: 0x2196F3
-                )
+                ), timestamp: Date()
             )
 
             // Outgoing message with reply
@@ -124,7 +142,7 @@ struct MessageItem: View {
                 sender: nil,
                 onReply: {
                     print("Reply tapped")
-                }
+                }, timestamp: Date()
             )
 
             // Simple incoming message
@@ -138,7 +156,7 @@ struct MessageItem: View {
                     codename: "Sarah",
                     dmToken: 0,
                     color: 0xFF9800
-                )
+                ), timestamp: Date()
             )
 
             // Simple outgoing message
@@ -146,7 +164,7 @@ struct MessageItem: View {
                 text: "Hi! How are you doing?",
                 isIncoming: false,
                 repliedTo: nil,
-                sender: nil
+                sender: nil, timestamp: Date()
             )
 
             // Long incoming message
@@ -161,9 +179,10 @@ struct MessageItem: View {
                     codename: "Mayur",
                     dmToken: 123,
                     color: 0xcef8c5
-                )
+                ), timestamp: Date()
             )
         }
         .padding()
     }
 }
+

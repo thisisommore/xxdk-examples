@@ -17,7 +17,7 @@ struct MessageContextMenu: View {
     @Binding var selectedEmoji: MessageEmoji
     @Binding var shouldTriggerReply: Bool
     
-    var onDM: ((String, Int32, Data) -> Void)?
+    var onDM: ((String, Int32, Data, Int) -> Void)?
     
     var body: some View {
         // Emoji picker
@@ -41,7 +41,7 @@ struct MessageContextMenu: View {
            let sender = sender,
            sender.dmToken != 0 {
             Button {
-                onDM?(sender.codename, sender.dmToken, sender.pubkey)
+                onDM?(sender.codename, sender.dmToken, sender.pubkey, sender.color)
             } label: {
                 Label("Send DM", systemImage: "message")
             }

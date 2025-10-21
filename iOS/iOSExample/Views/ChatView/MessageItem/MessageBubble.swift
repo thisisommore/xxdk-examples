@@ -13,14 +13,14 @@ struct MessageBubble: View {
     let text: String
     let isIncoming: Bool
     let sender: Sender?
-
+    let timestamp: String
     @Binding var selectedEmoji: MessageEmoji
     @Binding var shouldTriggerReply: Bool
 
-    var onDM: ((String, Int32, Data) -> Void)?
+    var onDM: ((String, Int32, Data, Int) -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: isIncoming ? .leading : .trailing, spacing: 4) {
             if isIncoming {
                 MessageSender(
                     isIncoming: isIncoming,
@@ -35,8 +35,12 @@ struct MessageBubble: View {
                     textColor: isIncoming ? Color.messageText : Color.white,
                     linkColor: isIncoming ? Color.messageText : Color.white
                 )
-                .foregroundStyle(isIncoming ? Color.black : Color.white)
 
+            }
+            VStack(alignment: .trailing) {
+                Text(timestamp).font(.system(size: 10)).foregroundStyle(
+                    isIncoming ? Color.messageText : Color.white
+                )
             }
         }
         .padding(.horizontal, 8)
@@ -77,11 +81,13 @@ struct MessageBubble: View {
                     dmToken: 123,
                     color: 0xcef8c5
                 ),
+                timestamp: "6:04pm",
                 selectedEmoji: .constant(.none),
                 shouldTriggerReply: .constant(false),
-                onDM: { name, token, pubkey in
+                onDM: { name, token, pubkey, color in
                     print("DM to \(name)")
-                }
+                },
+
             )
 
             // Outgoing bubble
@@ -89,6 +95,7 @@ struct MessageBubble: View {
                 text: "I'm doing great, thanks for asking!",
                 isIncoming: false,
                 sender: nil,
+                timestamp: "6:04pm",
                 selectedEmoji: .constant(.none),
                 shouldTriggerReply: .constant(false)
             )
@@ -96,9 +103,7 @@ struct MessageBubble: View {
             // Incoming with link
             MessageBubble(
                 text: """
-                    <a href="https://www.example.com" rel="noopener noreferrer" target="_blank">
-                    Check this out!
-                    </a>
+                    <p>Hey <a href="https://www.example.com" rel="noopener noreferrer" target="_blank">Check this out!</a></p>
                     """,
                 isIncoming: true,
                 sender: Sender(
@@ -108,6 +113,7 @@ struct MessageBubble: View {
                     dmToken: 456,
                     color: 0x2196F3
                 ),
+                timestamp: "6:04pm",
                 selectedEmoji: .constant(.none),
                 shouldTriggerReply: .constant(false)
             )
@@ -124,6 +130,7 @@ struct MessageBubble: View {
                     dmToken: 0,
                     color: 0xFF9800
                 ),
+                timestamp: "6:04pm",
                 selectedEmoji: .constant(.none),
                 shouldTriggerReply: .constant(false)
             )
@@ -134,6 +141,7 @@ struct MessageBubble: View {
                     "Absolutely! I completely agree with what you're saying. The implementation looks solid and should work well for our use case.",
                 isIncoming: false,
                 sender: nil,
+                timestamp: "6:04pm",
                 selectedEmoji: .constant(.none),
                 shouldTriggerReply: .constant(false)
             )
@@ -149,6 +157,7 @@ struct MessageBubble: View {
                     dmToken: 0,
                     color: 0x9E9E9E
                 ),
+                timestamp: "6:04pm",
                 selectedEmoji: .constant(.none),
                 shouldTriggerReply: .constant(false)
             )

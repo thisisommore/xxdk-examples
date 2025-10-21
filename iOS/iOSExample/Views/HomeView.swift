@@ -4,6 +4,7 @@ import SwiftUI
 struct HomeView<T: XXDKP>: View {
     @State private var showingSheet = false
     @Query private var chats: [Chat]
+
     @EnvironmentObject var xxdk: T
     @State private var didStartLoad = false
     @EnvironmentObject private var swiftDataActor: SwiftDataActor
@@ -14,22 +15,8 @@ struct HomeView<T: XXDKP>: View {
         List {
             ForEach(chats) { chat in
 
-                VStack(alignment: .leading) {
-                    Text(chat.name).foregroundStyle(.primary)
-                    if let lastMessage = chat.messages.sorted(by: {
-                        $0.timestamp > $1.timestamp
-                    }).first {
-                        let senderName =
-                            lastMessage.isIncoming == false
-                            ? "you"
-                            : (lastMessage.sender?.codename ?? "unknown")
-                        Text("\(senderName): \(lastMessage.message)").font(.system(size: 12))
-                            .foregroundStyle(.secondary).lineLimit(1)
-                    } else {
-                        Text("No messages yet").font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    }
-                }.background(
+                ChatRowView(chat: chat)
+                .background(
                     NavigationLink(
                         value: Destination.chat(
                             chatId: chat.id,
@@ -39,6 +26,7 @@ struct HomeView<T: XXDKP>: View {
 
                     }.opacity(0)
                 )
+
 
             }
 
@@ -51,7 +39,6 @@ struct HomeView<T: XXDKP>: View {
                         showTooltip.toggle()
                     }) {
                         ProgressView()
-//                        Text("\(String(format: "%.0f",xxdk.statusPercentage))%")
                     }
                 }
                
@@ -73,10 +60,9 @@ struct HomeView<T: XXDKP>: View {
             if xxdk.statusPercentage == 0 {
                 Task.detached {
                     await xxdk.setUpCmix();
-                    await xxdk.startNetworkFollower();
                     await xxdk.load(privateIdentity: nil);
+                    await xxdk.startNetworkFollower();
                 }
-               
             }
         }
         .navigationTitle("Chat")
@@ -325,11 +311,17 @@ struct PasswordInputView: View {
         for: Chat.self,
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
-    ["Tom", "Mayur", "Shashank"].forEach { name in
+    ["<self>", "Tom", "Mayur", "Shashank"].forEach { name in
+        let chat = Chat(pubKey: name.data, name: name, dmToken: 0, color: greenColorInt)
         container.mainContext.insert(
-            Chat(pubKey: Data(), name: name, dmToken: 0)
+            chat
         )
+        container.mainContext.insert(
+            ChatMessage(message: "<p>Hello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllll</p>", isIncoming: true, chat: chat, sender: nil, id: name, replyTo: nil, timestamp: 1)
+        )
+        
     }
+    try! container.mainContext.save()
     return NavigationStack {
         HomeView<XXDKMock>(width: UIScreen.w(100))
             .modelContainer(container)

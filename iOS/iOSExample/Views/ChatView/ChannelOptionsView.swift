@@ -97,7 +97,7 @@ struct ChannelOptionsView<T: XXDKP>: View {
     let mockChat = Chat(
         channelId: "mock-channel-123",
         name: "General Discussion",
-        description: "A channel for general team discussions and announcements"
+        description: "A channel for general team discussions and announcements",
     )
     container.mainContext.insert(mockChat)
     

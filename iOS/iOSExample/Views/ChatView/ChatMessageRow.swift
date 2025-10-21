@@ -9,11 +9,11 @@ import SwiftUI
 struct ChatMessageRow: View {
     let result: ChatMessage
     var onReply: ((ChatMessage) -> Void)?
-    var onDM: ((String, Int32, Data) -> Void)?
+    var onDM: ((String, Int32, Data, Int) -> Void)?
     @Query private var chatReactions: [MessageReaction]
     @Query private var repliedTo: [ChatMessage]
     @Query private var messageSender: [Sender]
-    init(result: ChatMessage, onReply: ((ChatMessage) -> Void)? = nil, onDM: ((String, Int32, Data) -> Void)?) {
+    init(result: ChatMessage, onReply: ((ChatMessage) -> Void)? = nil, onDM: ((String, Int32, Data, Int) -> Void)?) {
         self.result = result
         self.onReply = onReply
         let messageId = result.id
@@ -44,7 +44,8 @@ struct ChatMessageRow: View {
                     onReply: {
                         onReply?(result)
                     },
-                    onDM: onDM
+                    onDM: onDM,
+                    timestamp: result.timestamp
                 )
                 Reactions(reactions: chatReactions)
             }

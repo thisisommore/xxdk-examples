@@ -88,7 +88,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         
  
 
-        persistIncoming(message: decodedMessage, codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID, color: color)
+        persistIncoming(message: decodedMessage, codename: codename, partnerKey: partnerKey, senderKey: senderKey, dmToken: dmToken, messageId: messageID, color: color)
         // Note: this should be a UUID in your database so
         // you can uniquely identify the message.
         msgCnt += 1;
@@ -125,7 +125,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
             fatalError("\(error)")
         }
 
-        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID, color: color)
+        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, senderKey: senderKey, dmToken: dmToken, messageId: messageID, color: color)
         msgCnt += 1;
         return msgCnt;
     }
@@ -151,7 +151,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
             fatalError("\(error)")
         }
 
-        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, dmToken: dmToken, messageId: messageID, color: color)
+        persistIncoming(message: text ?? "empty text", codename: codename, partnerKey: partnerKey, senderKey: senderKey, dmToken: dmToken, messageId: messageID, color: color)
         msgCnt += 1;
         return msgCnt;
     }
@@ -161,14 +161,14 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
     }
     
     // MARK: - Persistence Helpers
-    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data, ctx: SwiftDataActor? = nil) {
+    private func persistIncomingIfPossible(message: String, codename: String?, messageId: Data, ctx: SwiftDataActor? = nil, color: Int) {
         let contextToUse = ctx ?? modelActor
         guard let contextToUse else { return }
 
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
         Task { @MainActor in
             do {
-                let chat = try fetchOrCreateDMChat(codename: name, ctx: contextToUse, pubKey: nil, dmToken: nil)
+                let chat = try fetchOrCreateDMChat(codename: name, ctx: contextToUse, pubKey: nil, dmToken: nil, color: color)
 
                 // Check if sender's pubkey matches the pubkey of chat with id "<self>"
                 let isIncoming = !isSenderSelf(chat: chat, senderPubKey: nil, ctx: contextToUse)
@@ -182,14 +182,14 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         }
     }
 
-    private func persistIncoming(message: String, codename: String?, partnerKey: Data?, dmToken: Int32, messageId: Data, color: Int) {
+    private func persistIncoming(message: String, codename: String?, partnerKey: Data?, senderKey: Data?, dmToken: Int32, messageId: Data, color: Int) {
         guard let backgroundContext = modelActor else { return }
         let name = (codename?.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isEmpty ? nil : $0 } ?? "Unknown"
 
         Task { @MainActor in
             do {
                 if let partnerKey {
-                    let chat = try fetchOrCreateDMChat(codename: name, ctx: backgroundContext, pubKey: partnerKey, dmToken: dmToken)
+                    let chat = try fetchOrCreateDMChat(codename: name, ctx: backgroundContext, pubKey: partnerKey, dmToken: dmToken, color: color)
                     print("DMReceiver: ChatMessage(message: \"\(message)\", isIncoming: \(chat.name != "<self>"), chat: \(chat.id), id: \(messageId.base64EncodedString()))")
 
                     // Create or update Sender object
@@ -210,13 +210,13 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                     }
 
                     // Check if sender's pubkey matches the pubkey of chat with id "<self>"
-                    let isIncoming = !isSenderSelf(chat: chat, senderPubKey: partnerKey, ctx: backgroundContext)
+                    let isIncoming = !isSenderSelf(chat: chat, senderPubKey: senderKey, ctx: backgroundContext)
                     let msg = ChatMessage(message: message, isIncoming: isIncoming, chat: chat, sender: sender, id: messageId.base64EncodedString())
                     chat.messages.append(msg)
                     try backgroundContext.save()
                 } else {
                     // Fallback if no partner key available
-                    persistIncomingIfPossible(message: message, codename: name, messageId: messageId, ctx: backgroundContext)
+                    persistIncomingIfPossible(message: message, codename: name, messageId: messageId, ctx: backgroundContext, color: color)
                 }
             } catch {
                 print("DMReceiver: Failed to save incoming message for \(name): \(error)")
@@ -224,7 +224,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
         }
     }
 
-    private func fetchOrCreateDMChat(codename: String, ctx: SwiftDataActor, pubKey: Data?, dmToken: Int32?) throws -> Chat {
+    private func fetchOrCreateDMChat(codename: String, ctx: SwiftDataActor, pubKey: Data?, dmToken: Int32?, color: Int) throws -> Chat {
         if let pubKey {
             let pubKeyB64 = pubKey.base64EncodedString()
             let byKey = FetchDescriptor<Chat>(predicate: #Predicate { $0.id == pubKeyB64 })
@@ -232,7 +232,7 @@ class DMReceiver: NSObject, ObservableObject, Bindings.BindingsDMReceiverProtoco
                 return existingByKey
             } else {
                 guard let dmToken else { throw MyError.runtimeError("dmToken is required to create chat with pubKey") }
-                let newChat = Chat(pubKey: pubKey, name: codename, dmToken: dmToken)
+                let newChat = Chat(pubKey: pubKey, name: codename, dmToken: dmToken, color: color)
                 ctx.insert(newChat)
                 try ctx.save()
                 return newChat

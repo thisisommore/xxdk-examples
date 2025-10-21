@@ -23,6 +23,7 @@ class Chat {
     var dmToken: Int32?
     @Relationship(deleteRule: .cascade, inverse: \ChatMessage.chat)
     var messages = [ChatMessage]()
+    var color: Int = 0xE97451
 
     // General initializer (use for channels where you have a channel id and name)
     init(channelId: String, name: String, description: String? = nil) {
@@ -32,10 +33,11 @@ class Chat {
     }
 
     // initializer for DM chats where pubkey and dmToken is required
-    init(pubKey: Data, name: String, dmToken: Int32) {
+    init(pubKey: Data, name: String, dmToken: Int32, color: Int) {
         self.id = pubKey.base64EncodedString()
         self.name = name
         self.dmToken = dmToken
+        self.color = color
     }
 
     func add(m: ChatMessage){

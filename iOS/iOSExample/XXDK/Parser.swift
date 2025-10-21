@@ -105,16 +105,110 @@ public struct ChannelSendReportJSON: Decodable {
 public struct ModelMessageJSON: Codable {
     public let pubKey: Data
     public let messageID: Data
-    
+
     private enum CodingKeys: String, CodingKey {
         case pubKey = "PubKey"
         case messageID = "MessageID"
     }
-    
+
     public init(pubKey: Data, messageID: Data) {
         self.pubKey = pubKey
         self.messageID = messageID
     }
+}
+
+// Remote KV entry structure for channels storage tag
+// Keys map to: Version (number), Data (string), Timestamp (string)
+public struct RemoteKVEntry: Codable {
+    public let Version: Int
+    public let Data: String
+    public let Timestamp: String
+
+    private enum CodingKeys: String, CodingKey {
+        case Version
+        case Data
+        case Timestamp
+    }
+
+    public init(version: Int, data: String, timestamp: String) {
+        self.Version = version
+        self.Data = data
+        self.Timestamp = timestamp
+    }
+}
+
+// MARK: - CMix Params
+// Mirrors the TypeScript CMixParams shape
+public struct CMixParamsJSON: Codable {
+    public var Network: NetworkParams
+    public var CMIX: CMixCoreParams
+
+    public init(Network: NetworkParams, CMIX: CMixCoreParams) {
+        self.Network = Network
+        self.CMIX = CMIX
+    }
+}
+
+public struct NetworkParams: Codable {
+    public var TrackNetworkPeriod: Int
+    public var MaxCheckedRounds: Int
+    public var RegNodesBufferLen: Int
+    public var NetworkHealthTimeout: Int
+    public var ParallelNodeRegistrations: Int
+    public var KnownRoundsThreshold: Int
+    public var FastPolling: Bool
+    public var VerboseRoundTracking: Bool
+    public var RealtimeOnly: Bool
+    public var ReplayRequests: Bool
+    public var EnableImmediateSending: Bool
+    public var MaxParallelIdentityTracks: Int
+    public var Rounds: RoundsParams
+    public var Pickup: PickupParams
+    public var Message: MessageParams
+    public var Historical: HistoricalParams
+}
+
+public struct RoundsParams: Codable {
+    public var MaxHistoricalRounds: Int
+    public var HistoricalRoundsPeriod: Int
+    public var HistoricalRoundsBufferLen: Int
+    public var MaxHistoricalRoundsRetries: Int
+}
+
+public struct PickupParams: Codable {
+    public var NumMessageRetrievalWorkers: Int
+    public var LookupRoundsBufferLen: Int
+    public var MaxHistoricalRoundsRetries: Int
+    public var UncheckRoundPeriod: Int
+    public var ForceMessagePickupRetry: Bool
+    public var SendTimeout: Int
+    public var RealtimeOnly: Bool
+    public var ForceHistoricalRounds: Bool
+}
+
+public struct MessageParams: Codable {
+    public var MessageReceptionBuffLen: Int
+    public var MessageReceptionWorkerPoolSize: Int
+    public var MaxChecksInProcessMessage: Int
+    public var InProcessMessageWait: Int
+    public var RealtimeOnly: Bool
+}
+
+public struct HistoricalParams: Codable {
+    public var MaxHistoricalRounds: Int
+    public var HistoricalRoundsPeriod: Int
+    public var HistoricalRoundsBufferLen: Int
+    public var MaxHistoricalRoundsRetries: Int
+}
+
+public struct CMixCoreParams: Codable {
+    public var RoundTries: Int
+    public var Timeout: Int
+    public var RetryDelay: Int
+    public var SendTimeout: Int
+    public var DebugTag: String
+    public var BlacklistedNodes: [String: Bool]
+    public var Critical: Bool
 }
 
 public enum Parser {
@@ -149,6 +243,10 @@ public enum Parser {
         try decoder.decode(ChannelSendReportJSON.self, from: data)
     }
     
+    public static func decodeString(from data: Data) throws -> String {
+        try decoder.decode(String.self, from: data)
+    }
+    
     // MARK: - Encode helpers
 
     public static func encodeIdentity(_ identity: IdentityJSON) throws -> Data {
@@ -157,5 +255,25 @@ public enum Parser {
 
     public static func encodeModelMessage(_ message: ModelMessageJSON) throws -> Data {
         try encoder.encode(message)
+    }
+
+    public static func encodeRemoteKVEntry(_ entry: RemoteKVEntry) throws -> Data {
+        try encoder.encode(entry)
+    }
+
+    public static func decodeRemoteKVEntry(from data: Data) throws -> RemoteKVEntry {
+        try decoder.decode(RemoteKVEntry.self, from: data)
+    }
+    public static func encodeString(_ entry: String) throws -> Data {
+        try encoder.encode(entry)
+    }
+
+    // MARK: - CMix Params helpers
+    public static func decodeCMixParams(from data: Data) throws -> CMixParamsJSON {
+        try decoder.decode(CMixParamsJSON.self, from: data)
+    }
+
+    public static func encodeCMixParams(_ params: CMixParamsJSON) throws -> Data {
+        try encoder.encode(params)
     }
 }

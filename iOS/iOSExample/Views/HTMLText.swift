@@ -118,7 +118,7 @@ private extension NSAttributedString {
 
 // MARK: - Parsing Logic
 
-private struct HTMLParser {
+private struct HTMLParsers {
     static func parse(
         html: String,
         textColor: Color,
@@ -255,6 +255,7 @@ struct HTMLText: View, Equatable {
     private let html: String
     private let textColor: Color
     private let linkColor: Color
+    private let lineLimit: Int?
     private let underlineLinks: Bool
     private let baseTextStyle: UIFont.TextStyle
     private let preserveSizes: Bool
@@ -280,7 +281,8 @@ struct HTMLText: View, Equatable {
         baseTextStyle: UIFont.TextStyle = .body,
         preserveSizes: Bool = true,
         preserveBoldItalic: Bool = true,
-        customFontSize: CGFloat? = nil
+        customFontSize: CGFloat? = nil,
+        lineLimit: Int? = nil
     ) {
         self.html = html
         self.textColor = textColor
@@ -290,7 +292,8 @@ struct HTMLText: View, Equatable {
         self.preserveSizes = preserveSizes
         self.preserveBoldItalic = preserveBoldItalic
         self.customFontSize = customFontSize
-        self._estimatedLines = State(initialValue: SkeletonHelper.estimateLineCount(from: html))
+        self.lineLimit = lineLimit
+        self._estimatedLines = State(initialValue: lineLimit ?? SkeletonHelper.estimateLineCount(from: html))
     }
     
     // MARK: - Equatable
@@ -306,7 +309,9 @@ struct HTMLText: View, Equatable {
     var body: some View {
         if let attributedString = attributedString {
             Text(attributedString)
-                .tint(linkColor)
+                .tint(linkColor).lineLimit(lineLimit).padding(0).onChange(of: html) { _, _ in
+                    loadAttributedString()
+                }
         } else {
             // Show skeleton placeholder with estimated line count
             SkeletonPlaceholder(lineCount: estimatedLines)
@@ -314,6 +319,7 @@ struct HTMLText: View, Equatable {
                     loadAttributedString()
                 }
         }
+        
     }
     
     /// Modifier to set a custom font size
@@ -335,7 +341,7 @@ struct HTMLText: View, Equatable {
     private func loadAttributedString() {
         // Use DispatchQueue to defer state update outside view update cycle
         DispatchQueue.main.async {
-            self.attributedString = HTMLParser.parse(
+            self.attributedString = HTMLParsers.parse(
                 html: html,
                 textColor: textColor,
                 linkColor: linkColor,

@@ -130,9 +130,8 @@ struct CodenameGeneratorView: View {
 
         let success = UINotificationFeedbackGenerator()
         success.notificationOccurred(.success)
-        let xxdkRef = xxdk
         Task {
-            await xxdkRef.load(privateIdentity: identity.privateIdentity)
+            await xxdk.load(privateIdentity: identity.privateIdentity)
         }
         navigation.path.append(Destination.landing)
     }
@@ -271,7 +270,7 @@ struct BottomActionsView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(selectedCodename != nil ? Color.green : Color.secondary.opacity(0.3))
+                .background(selectedCodename != nil ? Color.haven : Color.secondary.opacity(0.3))
                 .foregroundColor(selectedCodename != nil ? .white : .secondary)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }

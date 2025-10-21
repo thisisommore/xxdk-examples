@@ -31,10 +31,10 @@ struct ChatView<T: XXDKP>: View {
     @State private var showChannelOptions: Bool = false
     @State private var navigateToDMChat: Chat? = nil
     @EnvironmentObject var xxdk: T
-    func createDMChatAndNavigate(codename: String, dmToken: Int32, pubKey: Data)
+    func createDMChatAndNavigate(codename: String, dmToken: Int32, pubKey: Data, color: Int)
     {
         // Create a new DM chat
-        let dmChat = Chat(pubKey: pubKey, name: codename, dmToken: dmToken)
+        let dmChat = Chat(pubKey: pubKey, name: codename, dmToken: dmToken, color: color)
 
         do {
             swiftDataActor.insert(dmChat)
@@ -67,6 +67,7 @@ struct ChatView<T: XXDKP>: View {
                             }) {
                                 HStack {
                                     Image(systemName: "chevron.left").aspectRatio(contentMode: .fit)
+                                    // TODO: this does not show sometimes, only shows when scrolled to top end
                                     Text("Back")
                                 }
                             })
@@ -76,11 +77,11 @@ struct ChatView<T: XXDKP>: View {
                             onReply: { message in
                                 replyingTo = message
                             },
-                            onDM: { codename, dmToken, pubKey in
+                            onDM: { codename, dmToken, pubKey, color  in
                                 createDMChatAndNavigate(
                                     codename: codename,
                                     dmToken: dmToken,
-                                    pubKey: pubKey
+                                    pubKey: pubKey, color: color
                                 )
                             }
                         )
@@ -102,8 +103,16 @@ struct ChatView<T: XXDKP>: View {
                 )
             }
         }
-      
-        .navigationTitle(chatTitle)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Button {
+                    showChannelOptions = true
+                } label: {
+                    Text(chatTitle == "<self>" ? "Notes" : chatTitle)
+                        .font(.headline)
+                }
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showChannelOptions) {
             ChannelOptionsView<T>(chat: chat) {

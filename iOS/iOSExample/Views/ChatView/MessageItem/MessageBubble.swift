@@ -45,7 +45,7 @@ struct MessageBubble: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .background(isIncoming ? Color.messageBubble : Color.blue)
+        .background(isIncoming ? Color.messageBubble : Color.haven)
         .clipShape(
             UnevenRoundedRectangle(
                 topLeadingRadius: 10,

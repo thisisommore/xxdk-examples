@@ -97,3 +97,13 @@ extension Color {
         return (Double(r), Double(g), Double(b), Double(brightness))
     }
 }
+
+extension ToolbarItem {
+    func hiddenSharedBackground() -> some ToolbarContent {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            return self.sharedBackgroundVisibility(.hidden)
+        } else {
+            return self
+        }
+    }
+}

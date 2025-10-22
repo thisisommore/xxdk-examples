@@ -42,7 +42,7 @@ extension Destination {
                 .navigationBarBackButtonHidden()
         case let .chat(chatId, chatTitle):
             ChatView<XXDK>(width: UIScreen.w(100), chatId: chatId, chatTitle: chatTitle)
-            
+                .navigationBarBackButtonHidden()
         }
     }
 }

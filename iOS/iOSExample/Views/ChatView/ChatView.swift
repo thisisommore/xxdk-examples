@@ -61,16 +61,6 @@ struct ChatView<T: XXDKP>: View {
         ZStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    EmptyView().navigationBarBackButtonHidden(true)
-                        .navigationBarItems(leading: Button(action: {
-                            self.presentationMode.wrappedValue.dismiss()
-                            }) {
-                                HStack {
-                                    Image(systemName: "chevron.left").aspectRatio(contentMode: .fit)
-                                    // TODO: this does not show sometimes, only shows when scrolled to top end
-                                    Text("Back")
-                                }
-                            })
                     ForEach(messages, id: \.id) { result in
                         ChatMessageRow(
                             result: result,
@@ -112,6 +102,17 @@ struct ChatView<T: XXDKP>: View {
                         .font(.headline)
                 }
             }
+          
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        presentationMode.wrappedValue.dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left").foregroundStyle(.haven)
+                        Text("Back")
+                            .font(.headline).foregroundStyle(.haven)
+                    }
+                }.hiddenSharedBackground()
+            
         }
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showChannelOptions) {

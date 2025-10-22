@@ -81,8 +81,8 @@ struct ChannelOptionsView<T: XXDKP>: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
-                    }
-                }
+                    }.tint(.haven)
+                }.hiddenSharedBackground()
             }
         }
     }

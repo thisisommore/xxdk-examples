@@ -49,7 +49,7 @@ public enum XXDKProgressStatus {
         case .preparingChannelsManager:
             return "Preparing channels manager"
         case .joiningChannels:
-            return "Joining channels"
+            return "Joining xxGeneralChat"
         case .networkFollowerComplete:
             return "Network follower complete"
         case .ready:

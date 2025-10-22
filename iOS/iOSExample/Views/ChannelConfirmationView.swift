@@ -37,7 +37,7 @@ struct ChannelConfirmationView: View {
                 }
                 
                 Section {
-                    Toggle("Enable DM", isOn: $enableDM)
+                    Toggle("Enable DM", isOn: $enableDM).disabled(isJoining)
                 }
                 
                 if isJoining {
@@ -60,15 +60,15 @@ struct ChannelConfirmationView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
-                    }
+                    }.tint(.haven)
                     .disabled(isJoining)
-                }
+                }.hiddenSharedBackground()
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Join") {
                         onConfirm(enableDM)
-                    }
+                    }.tint(.haven)
                     .disabled(isJoining)
-                }
+                }.hiddenSharedBackground()
             }
         }
     }

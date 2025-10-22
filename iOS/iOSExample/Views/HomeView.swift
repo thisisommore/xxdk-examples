@@ -16,17 +16,16 @@ struct HomeView<T: XXDKP>: View {
             ForEach(chats) { chat in
 
                 ChatRowView(chat: chat)
-                .background(
-                    NavigationLink(
-                        value: Destination.chat(
-                            chatId: chat.id,
-                            chatTitle: chat.name
-                        )
-                    ) {
+                    .background(
+                        NavigationLink(
+                            value: Destination.chat(
+                                chatId: chat.id,
+                                chatTitle: chat.name
+                            )
+                        ) {
 
-                    }.opacity(0)
-                )
-
+                        }.opacity(0)
+                    )
 
             }
 
@@ -38,19 +37,20 @@ struct HomeView<T: XXDKP>: View {
                     Button(action: {
                         showTooltip.toggle()
                     }) {
-                        ProgressView()
+                        ProgressView().tint(.haven)
                     }
                 }
-               
-            }
+
+            }.hiddenSharedBackground()
+
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showingSheet.toggle()
                 } label: {
                     Image(systemName: "plus")
-                }
-            }
-            
+                }.tint(.haven)
+            }.hiddenSharedBackground()
+
         }
         .sheet(isPresented: $showingSheet) {
             NewChatView<T>()
@@ -59,9 +59,9 @@ struct HomeView<T: XXDKP>: View {
         .onAppear {
             if xxdk.statusPercentage == 0 {
                 Task.detached {
-                    await xxdk.setUpCmix();
-                    await xxdk.load(privateIdentity: nil);
-                    await xxdk.startNetworkFollower();
+                    await xxdk.setUpCmix()
+                    await xxdk.load(privateIdentity: nil)
+                    await xxdk.startNetworkFollower()
                 }
             }
         }
@@ -101,54 +101,51 @@ struct NewChatView<T: XXDKP>: View {
                         }
                     }
                 }
-                .toolbar(content: {
-                    Button(
-                        action: { dismiss() },
-                        label: { Image(systemName: "xmark") }
-                    )
-                })
-
-                Button(
-                    action: {
-                        let trimmed = inviteLink.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        )
-                        guard !trimmed.isEmpty else { return }
-
-                        do {
-                            // Check privacy level first
-                            let privacyLevel = try xxdk.getChannelPrivacyLevel(
-                                url: trimmed
-                            )
-
-                            if privacyLevel == .secret {
-                                // Private channel - show password input
-                                isPrivateChannel = true
-                                showPasswordSheet = true
-                                errorMessage = nil
-                            } else {
-                                // Public channel - proceed directly
-                                print("getting channel from url")
-                                let channel = try xxdk.getChannelFromURL(
-                                    url: trimmed
+                .toolbar{
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Close")
+                        { dismiss() }.tint(.haven)
+                    }.hiddenSharedBackground()
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(
+                            action: {
+                                let trimmed = inviteLink.trimmingCharacters(
+                                    in: .whitespacesAndNewlines
                                 )
-                                print("channel data \(channel)")
-                                channelData = channel
-                                showConfirmationSheet = true
-                                errorMessage = nil
-                            }
-                        } catch {
-                            errorMessage =
-                                "Failed to get channel: \(error.localizedDescription)"
-                        }
-                    },
-                    label: {
-                        Text("Start Conversation")
-                            .frame(maxWidth: .infinity)
-                    }
-                )
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal)
+                                guard !trimmed.isEmpty else { return }
+
+                                do {
+                                    // Check privacy level first
+                                    let privacyLevel =
+                                        try xxdk.getChannelPrivacyLevel(
+                                            url: trimmed
+                                        )
+
+                                    if privacyLevel == .secret {
+                                        // Private channel - show password input
+                                        isPrivateChannel = true
+                                        showPasswordSheet = true
+                                        errorMessage = nil
+                                    } else {
+                                        // Public channel - proceed directly
+                                        print("getting channel from url")
+                                        let channel = try xxdk.getChannelFromURL(
+                                            url: trimmed
+                                        )
+                                        print("channel data \(channel)")
+                                        channelData = channel
+                                        showConfirmationSheet = true
+                                        errorMessage = nil
+                                    }
+                                } catch {
+                                    errorMessage =
+                                        "Failed to get channel: \(error.localizedDescription)"
+                                }
+                            },
+                            label: { Text("Join").foregroundStyle(.haven) }
+                        )
+                    }.hiddenSharedBackground()
+                }
             }
             .sheet(isPresented: $showPasswordSheet) {
                 PasswordInputView(
@@ -199,6 +196,7 @@ struct NewChatView<T: XXDKP>: View {
             .navigationTitle("Join Channel")
             .navigationBarTitleDisplayMode(.inline)
         }
+       
 
     }
 
@@ -312,14 +310,28 @@ struct PasswordInputView: View {
         configurations: ModelConfiguration(isStoredInMemoryOnly: true)
     )
     ["<self>", "Tom", "Mayur", "Shashank"].forEach { name in
-        let chat = Chat(pubKey: name.data, name: name, dmToken: 0, color: greenColorInt)
+        let chat = Chat(
+            pubKey: name.data,
+            name: name,
+            dmToken: 0,
+            color: greenColorInt
+        )
         container.mainContext.insert(
             chat
         )
         container.mainContext.insert(
-            ChatMessage(message: "<p>Hello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllll</p>", isIncoming: true, chat: chat, sender: nil, id: name, replyTo: nil, timestamp: 1)
+            ChatMessage(
+                message:
+                    "<p>Hello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllllHello alllllllll</p>",
+                isIncoming: true,
+                chat: chat,
+                sender: nil,
+                id: name,
+                replyTo: nil,
+                timestamp: 1
+            )
         )
-        
+
     }
     try! container.mainContext.save()
     return NavigationStack {

@@ -116,7 +116,7 @@ public struct PasswordCreationView: View {
                         HStack(spacing: 8) {
                             Image(
                                 systemName: ok
-                                    ? "checkmark.circle.fill" : "xmark.circle"
+                                ? "checkmark.circle.fill" : "xmark.circle"
                             )
                             .foregroundStyle(
                                 ok ? BranchColor.primary : .secondary
@@ -130,27 +130,27 @@ public struct PasswordCreationView: View {
                         }
                         .font(.footnote)
                     }
-
+                    
                     if !confirm.isEmpty || attemptedSubmit {
                         HStack(spacing: 8) {
                             Image(
                                 systemName: passwordsMatch
-                                    ? "checkmark.circle.fill"
-                                    : "exclamationmark.triangle.fill"
+                                ? "checkmark.circle.fill"
+                                : "exclamationmark.triangle.fill"
                             )
                             .foregroundStyle(
                                 passwordsMatch ? BranchColor.primary : .orange
                             )
                             Text(
                                 passwordsMatch
-                                    ? "Passwords match"
-                                    : "Passwords don't match"
+                                ? "Passwords match"
+                                : "Passwords don't match"
                             )
                         }
                         .font(.footnote)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
-
+                    
                     // Strength
                     VStack(alignment: .leading, spacing: 4) {
                         ProgressView(value: strength)
@@ -162,27 +162,7 @@ public struct PasswordCreationView: View {
                     .opacity(password.isEmpty ? 0 : 1)
                     .animation(.easeInOut, value: password)
                 }
-
-                // Primary action
-                Button(action: handleSubmit) {
-                    HStack {
-                        if isLoading {
-                            ProgressView()
-                                .progressViewStyle(
-                                    CircularProgressViewStyle(tint: .white)
-                                )
-                                .frame(width: 16, height: 16)
-                        }
-                        Text(isLoading ? xxdk.status : "Continue").bold()
-                    }
-                    .frame(maxWidth: .infinity)
-                    .foregroundStyle(.white)
-                }
-                .buttonStyle(
-                    BranchButtonStyle(isEnabled: canContinue && !isLoading)
-                )
-                .disabled(!canContinue || isLoading)
-                .privacySensitive()
+            
 
                 // Import account button
                 Button(action: { showImportSheet = true }) {
@@ -192,6 +172,7 @@ public struct PasswordCreationView: View {
                 }
                 .buttonStyle(BranchButtonStyle(isEnabled: true))
             }
+            
             .animation(
                 .easeInOut(duration: 0.3),
                 value: !confirm.isEmpty || attemptedSubmit
@@ -199,12 +180,34 @@ public struct PasswordCreationView: View {
             .padding(.horizontal, 20)
             .padding(.top, 28)
             .frame(maxWidth: .infinity, alignment: .topLeading)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: handleSubmit) {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(
+                                        CircularProgressViewStyle(tint: .white)
+                                    )
+                                    .frame(width: 16, height: 16)
+                            }
+                            Text(isLoading ? xxdk.status : "Continue").fontWeight((!canContinue || isLoading) ? .regular : .bold ).foregroundStyle((!canContinue || isLoading) ? .gray : .haven)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                    }
+                    .disabled(!canContinue || isLoading)
+                    .privacySensitive()
+                    
+                }.hiddenSharedBackground()
+            }
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .privacySensitive()
         .sheet(isPresented: $showImportSheet) {
             ImportAccountSheet(importPassword: $importPassword)
         }
+
     }
 
     // MARK: - Actions
@@ -223,7 +226,7 @@ public struct PasswordCreationView: View {
 
         Task.detached {
             await xxdk.setUpCmix()
-            
+
             await MainActor.run {
                 print("append time")
                 navigation.path.append(Destination.codenameGenerator)
@@ -412,20 +415,6 @@ private struct ImportAccountSheet: View {
                                     .strokeBorder(Color.separator, lineWidth: 1)
                             )
                     }
-
-                    // Import button
-                    Button(action: handleImport) {
-                        Text("Import").bold()
-                            .frame(maxWidth: .infinity)
-                            .foregroundStyle(.white)
-                    }
-                    .buttonStyle(
-                        BranchButtonStyle(
-                            isEnabled: !importPassword.isEmpty
-                                && selectedFileURL != nil
-                        )
-                    )
-                    .disabled(importPassword.isEmpty || selectedFileURL == nil)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
@@ -435,8 +424,13 @@ private struct ImportAccountSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
-                    }
-                }
+                    }.tint(.haven)
+                }.hiddenSharedBackground()
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Import") {
+                        dismiss()
+                    }.tint(.haven).disabled(importPassword.isEmpty || selectedFileURL == nil)
+                }.hiddenSharedBackground()
             }
         }
         .fileImporter(

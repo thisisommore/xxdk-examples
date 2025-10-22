@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,6 +13,7 @@
 		980A0D772B96723E004FB15A /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 980A0D762B96723E004FB15A /* Preview Assets.xcassets */; };
 		9854D57C2B98C269009437B8 /* mainnet.crt in Resources */ = {isa = PBXBuildFile; fileRef = 9854D57B2B98C269009437B8 /* mainnet.crt */; };
 		A14987572EA202BC00E72C00 /* UIScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14987562EA202B800E72C00 /* UIScreen.swift */; };
+		A1B6B2CC2EA7EE12005598E8 /* HavenIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = A1B6B2CB2EA7EE12005598E8 /* HavenIcon.icon */; };
 		A1E0DB012EA35F3500E344DC /* Secret.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E0DB002EA35F3200E344DC /* Secret.swift */; };
 /* End PBXBuildFile section */
 
@@ -26,45 +27,16 @@
 		9854D57B2B98C269009437B8 /* mainnet.crt */ = {isa = PBXFileReference; lastKnownFileType = text; path = mainnet.crt; sourceTree = "<group>"; };
 		A14987562EA202B800E72C00 /* UIScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIScreen.swift; sourceTree = "<group>"; };
 		A17324322EA515BF00388AC0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A1B6B2CB2EA7EE12005598E8 /* HavenIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HavenIcon.icon; sourceTree = "<group>"; };
 		A1E0DB002EA35F3200E344DC /* Secret.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secret.swift; sourceTree = "<group>"; };
 		AC0A4ED193EDC7519BB5AFA4 /* Pods_iOSExample.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iOSExample.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DAA55C59EA7ABF73C37204DC /* Pods-iOSExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iOSExample.release.xcconfig"; path = "Target Support Files/Pods-iOSExample/Pods-iOSExample.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A10030F62E83AA070096767A /* Model */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = Model;
-			sourceTree = "<group>";
-		};
-		A10030FB2E83CE8B0096767A /* XXDK */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = XXDK;
-			sourceTree = "<group>";
-		};
-		A17427A72EA2770D00D39261 /* Views */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
+		A10030F62E83AA070096767A /* Model */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Model; sourceTree = "<group>"; };
+		A10030FB2E83CE8B0096767A /* XXDK */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = XXDK; sourceTree = "<group>"; };
+		A17427A72EA2770D00D39261 /* Views */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Views; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +90,7 @@
 				9854D57A2B98C238009437B8 /* Resources */,
 				980A0D6C2B96723C004FB15A /* iOSExampleApp.swift */,
 				980A0D722B96723E004FB15A /* Assets.xcassets */,
+				A1B6B2CB2EA7EE12005598E8 /* HavenIcon.icon */,
 				980A0D742B96723E004FB15A /* iOSExample.entitlements */,
 				980A0D752B96723E004FB15A /* Preview Content */,
 			);
@@ -213,6 +186,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B6B2CC2EA7EE12005598E8 /* HavenIcon.icon in Resources */,
 				980A0D772B96723E004FB15A /* Preview Assets.xcassets in Resources */,
 				9854D57C2B98C269009437B8 /* mainnet.crt in Resources */,
 				980A0D732B96723E004FB15A /* Assets.xcassets in Resources */,
@@ -252,9 +226,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iOSExample/Pods-iOSExample-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iOSExample/Pods-iOSExample-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -397,7 +375,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 70A4CA2706503377F74DA753 /* Pods-iOSExample.debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = HavenIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = iOSExample/iOSExample.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -446,7 +424,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DAA55C59EA7ABF73C37204DC /* Pods-iOSExample.release.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = HavenIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = iOSExample/iOSExample.entitlements;
 				CODE_SIGN_STYLE = Automatic;

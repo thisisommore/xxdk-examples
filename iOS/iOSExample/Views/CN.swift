@@ -253,7 +253,7 @@ struct BottomActionsView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(Color.blue)
+                .background(Color.haven)
                 .foregroundColor(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }

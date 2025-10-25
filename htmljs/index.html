@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <link rel="stylesheet" href="style.css" />
     <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
-    <script src="https://elixxir-bins.s3-us-west-1.amazonaws.com/wasm/xxdk-wasm-0.3.19/dist/wasm_exec.js"></script>
+    <script src="/dist/wasm_exec.js"></script>
     <script src="https://elixxir-bins.s3-us-west-1.amazonaws.com/wasm/xxdk-wasm-0.3.19/dist/bundle.js"></script>
     <!-- https://github.com/beatgammit/base64-js //-->
     <script src="base64js.min.js"></script>
@@ -19,8 +19,12 @@
     // encoder/decoder for Uint8Array strings
     const encoder = new TextEncoder();
     const decoder = new TextDecoder('utf8');
-
+    // Health check variable (global scope for xxDMSend access)
+    let isNetworkHealthy = false;
+    const changeStatusTextUI = (text) => document.getElementById("statusMessage").textContent = text;
+    
     xxdk.InitXXDK().then(async(xx) => {
+        changeStatusTextUI("Network Initiating")
         // Now set up cMix, while other examples download
         // you must hard code the ndf file for now in your application.
         const ndf = await (await fetch('ndf.json')).text();
@@ -94,12 +98,66 @@
             window.xxDMClient = client;
         });
 
+        // Health check variables
+        let healthCheckId = null;
+
+        // Update health status in UI
+        const updateHealthStatus = () => {
+          const sendButton = document.querySelector(
+            'button[onclick="xxDMSend()"]'
+          );
+          const messageInput = document.getElementById("msgToSend");
+
+          // Check both conditions
+          const isReadyToSend = xxNet.ReadyToSend();
+          const isBothHealthy = isNetworkHealthy && isReadyToSend;
+
+          if (isBothHealthy) {
+            changeStatusTextUI("Network healthy")
+            sendButton.disabled = false;
+            sendButton.classList.remove("opacity-50", "cursor-not-allowed");
+            sendButton.textContent = "Submit";
+            messageInput.disabled = false;
+            messageInput.placeholder = "Type message to send...";
+          } else {
+            changeStatusTextUI("Network unhealthy, wait for some time")
+            sendButton.disabled = true;
+            sendButton.classList.add("opacity-50", "cursor-not-allowed");
+            sendButton.textContent = "Network not ready";
+            messageInput.disabled = false;
+            messageInput.placeholder =
+              "Network Unhealthy";
+          }
+        };
+
+        // Health check callback function
+        const healthCallback = (healthy) => {
+          isNetworkHealthy = healthy;
+          updateHealthStatus();
+        };
+
+        // Set initial state to unhealthy (button will be disabled)
+        updateHealthStatus();
+
+        // Register health callback and start network monitoring
+        healthCheckId = xxNet.AddHealthCallback({ Callback: healthCallback });
+        console.log("Health check callback registered with ID:", healthCheckId);
+
         // Once all of our clients are loaded we can start
         // listening to the network
         await xxNet.StartNetworkFollower(10000);
         await xxNet.WaitForNetwork(30000)
 
-    });
+        // Periodic health check every 1 second to show real-time ReadyToSend() status
+        const healthCheckInterval = setInterval(updateHealthStatus, 1000);
+
+        // Cleanup function when page unloads
+        window.addEventListener("beforeunload", () => {
+          if (healthCheckInterval) {
+            clearInterval(healthCheckInterval);
+          }
+        });
+      });
 
     const renderReceivedMessages = () => {
         let msgArea = document.getElementById("receivedMessages");
@@ -162,6 +220,15 @@
             return
         }
 
+        // Check if network is ready to send
+        if (!isNetworkHealthy || !xxNet.ReadyToSend()) {
+          console.warn("Network is unhealthy - cannot send messages!");
+          alert(
+            "Network is unhealthy. Please wait for the network to become healthy before sending messages."
+          );
+          return;
+        }
+
         let input = document.getElementById("msgToSend");
 
         console.log("sending message: " + input.value);
@@ -184,6 +251,7 @@
     </script>
     <main class="flex flex-col min-h-screen flex-col items-center p-10">
       <div class="flex-grow flex-col max-h-96 overflow-y-auto overflow-x-wrap w-4/5 border border-gray-300 m-0 [overflow-anchor:none]">
+        <p id="statusMessage">Fetching wasm xxdk</p>
         <p class="flex w-full justify-center">Received Messages</p>
         <div id="receivedMessages">Nothing yet...</div>
         <div id="anchor2" class="h-1 [overflow-anchor:auto]"></div>
@@ -201,7 +269,9 @@
           </div>
         </div>
         <div class="flex p-2">
-        <button onClick="xxDMSend()" class="z-0 group relative inline-flex items-center justify-center box-border appearance-none select-none whitespace-nowrap font-normal subpixel-antialiased overflow-hidden tap-highlight-transparent outline-none data-[focus-visible=true]:z-10 data-[focus-visible=true]:outline-2 data-[focus-visible=true]:outline-focus data-[focus-visible=true]:outline-offset-2 px-unit-4 min-w-unit-20 h-unit-10 text-small gap-unit-2 rounded-medium [&amp;&gt;svg]:max-w-[theme(spacing.unit-8)] data-[pressed=true]:scale-[0.97] transition-transform-colors-opacity motion-reduce:transition-none bg-primary text-primary-foreground data-[hover=true]:opacity-hover" type="button">Submit</button>
+        <button onClick="xxDMSend()" disabled class="z-0 group relative inline-flex items-center justify-center box-border appearance-none select-none whitespace-nowrap font-normal subpixel-antialiased overflow-hidden tap-highlight-transparent outline-none data-[focus-visible=true]:z-10 data-[focus-visible=true]:outline-2 data-[focus-visible=true]:outline-focus data-[focus-visible=true]:outline-offset-2 px-unit-4 min-w-unit-20 h-unit-10 text-small gap-unit-2 rounded-medium [&amp;&gt;svg]:max-w-[theme(spacing.unit-8)] data-[pressed=true]:scale-[0.97] transition-transform-colors-opacity motion-reduce:transition-none bg-primary text-primary-foreground data-[hover=true]:opacity-hover opacity-50 cursor-not-allowed" type="button">
+          Network not ready
+        </button>
         </div>
       </div>
     </main>

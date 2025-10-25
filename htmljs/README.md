@@ -4,6 +4,14 @@ An xxdk example written for plain old html using javascript.
 
 ## Running This Example
 
+## Fetch
+
+```bash
+mkdir -p dist
+curl -o dist/wasm_exec.js \
+  https://elixxir-bins.s3-us-west-1.amazonaws.com/wasm/xxdk-wasm-0.3.19/dist/wasm_exec.js
+```
+
 Open the `index.html` and it will attempt to run. Depending on your
 browser, the underlying web assembly environment may not have enough
 access to run properly. It is recommended to start a python webserver
